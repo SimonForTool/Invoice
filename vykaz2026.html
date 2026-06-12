@@ -982,26 +982,24 @@ async function loadFromOutlook() {
       + `&$select=subject,start,end`
       + `&$top=200`;
 
-    // Debug: decode token audience
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
-      console.log("Token aud:", payload.aud, "| scp:", payload.scp, "| upn:", payload.upn);
-    } catch(e) {}
+    // Ověření: zkusíme /me nejdřív
+    const meResp = await fetch("https://graph.microsoft.com/v1.0/me", { headers: { Authorization: `Bearer ${token}` } });
+    if (!meResp.ok) {
+      const meErr = await meResp.json().catch(() => ({}));
+      sessionStorage.removeItem("graph_token");
+      throw new Error(`Graph API /me ${meResp.status}: ${meErr?.error?.message || meResp.statusText}\nKód: ${meErr?.error?.code || "(prázdný)"}`);
+    }
+    const me = await meResp.json();
+    console.log("Přihlášen jako:", me.userPrincipalName, me.displayName);
 
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!resp.ok) {
       const errBody = await resp.json().catch(() => ({}));
       const msg = errBody?.error?.message || resp.statusText;
       const code = errBody?.error?.code || "";
-      if (resp.status === 401) {
+      if (resp.status === 401 || resp.status === 403) {
         sessionStorage.removeItem("graph_token");
-        // Decode token for user-visible info
-        let tokenInfo = "";
-        try {
-          const p = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
-          tokenInfo = `\nToken aud: ${p.aud}\nToken scp: ${p.scp || "(chybí)"}`;
-        } catch(e) {}
-        throw new Error(`Graph API 401 (${code}): ${msg}${tokenInfo}`);
+        throw new Error(`Graph API calendarView ${resp.status} (${code}): ${msg}`);
       }
       throw new Error(`Graph API ${resp.status} (${code}): ${msg}`);
     }
