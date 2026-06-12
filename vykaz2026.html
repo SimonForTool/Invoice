@@ -106,7 +106,8 @@ table.dt th:nth-child(3), table.dt td:nth-child(3) { width:90px; }   /* Typ */
 table.dt th:nth-child(4), table.dt td:nth-child(4) { width:80px; }   /* Začátek */
 table.dt th:nth-child(5), table.dt td:nth-child(5) { width:80px; }   /* Konec */
 table.dt th:nth-child(6), table.dt td:nth-child(6) { width:60px; text-align:center; } /* Hodin */
-table.dt th:nth-child(7), table.dt td:nth-child(7) { width:auto; text-align:right; padding-right:12px; } /* Odprac. */
+table.dt th:nth-child(7) { width:auto; text-align:right; padding-right:12px; }
+table.dt td:nth-child(7) { width:auto; text-align:center; font-weight:bold; }
 table.dt tr.tw td { background:#fff; }
 table.dt tr.tv td { background:var(--yel); }
 table.dt tr.ts td { background:var(--red); }
@@ -176,7 +177,8 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
   table.dt th:nth-child(4), table.dt td:nth-child(4) { width:14mm; }
   table.dt th:nth-child(5), table.dt td:nth-child(5) { width:12mm; }
   table.dt th:nth-child(6), table.dt td:nth-child(6) { width:12mm; }
-  table.dt th:last-child,   table.dt td:last-child   { width:auto; text-align:right; padding-right:4px; }
+  table.dt th:last-child { width:auto; text-align:right; padding-right:4px; }
+  table.dt td:last-child { width:auto; text-align:center; font-weight:bold; }
 
   select.tp, input.ti { display:none !important; }
   .pt { display:inline !important; }
@@ -502,7 +504,7 @@ function renderMonth(m) {
       <td><input class="ti" type="time" value="${d.end||""}" ${dis}
            onchange="chTime(${m},${i},'end',this.value)"><span class="pt">${d.end||""}</span></td>
       <td class="hc" id="hc_${m}_${i}">${h||(d.type==="holiday"?"–":"")}</td>
-      <td class="hc" style="text-align:right;padding-right:12px">${d.type==="work"?"<b>"+h+"</b>":""}</td>`;
+      <td>${d.type==="work"?"<b>"+h+"</b>":""}</td>`;
     tbody.appendChild(tr);
   }
 
