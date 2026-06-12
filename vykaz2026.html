@@ -583,6 +583,109 @@ function chTime(m, i, fld, val) {
 }
 
 // ══ TISK PDF ══════════════════════════════════════════════════════════════════
+function buildPrintHtml(m) {
+  const days  = DATA.months[String(m)]?.days || [];
+  const rate  = DATA.rate || 400;
+  let total   = 0;
+  let rows    = "";
+
+  for (const d of days) {
+    const h   = d.type === "work" ? calcH(d.start, d.end) : 0;
+    total    += h;
+    const dt  = new Date(d.date + "T00:00:00");
+    const dow = DNYTYDEN[dt.getDay() === 0 ? 6 : dt.getDay() - 1];
+    const bg  = d.type === "vacation" ? "#f0f0f0"
+              : d.type === "sick"     ? "#f0f0f0"
+              : d.type === "holiday"  ? "#f0f0f0"
+              : "#ffffff";
+    rows += `<tr style="background:${bg}">
+      <td>${fmtDate(d.date)}</td>
+      <td>${dow}</td>
+      <td style="text-align:center">${d.start || ""}</td>
+      <td style="text-align:center">${d.end   || ""}</td>
+      <td style="text-align:center">${h || (d.type === "holiday" ? "–" : "")}</td>
+      <td style="text-align:center;font-weight:bold">${d.type === "work" ? h : ""}</td>
+    </tr>`;
+  }
+
+  const lastD = new Date(2026, m, 0);
+  const lastDStr = fmtDate(localISO(lastD));
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:Arial,sans-serif; font-size:9pt; color:#000;
+           width:794px; padding:38px; background:#fff; }
+    .top  { display:flex; justify-content:space-between; margin-bottom:8mm; }
+    .left { font-size:9pt; line-height:1.7; }
+    .right{ text-align:right; }
+    .title{ font-size:26pt; font-weight:bold; }
+    .sub  { font-size:9pt; color:#555; }
+    table { width:100%; border-collapse:collapse; margin-bottom:4mm; }
+    td, th{ border:.5pt solid #aaa; padding:3px 6px; font-size:9pt; }
+    th    { background:#e0e0e0; font-weight:bold; text-align:left; }
+    td.lb { background:#e0e0e0; font-weight:bold; width:25mm; }
+    .desc { border:.5pt solid #aaa; padding:3px 8px 4px; margin-bottom:4mm; font-size:8.5pt; line-height:1.6; }
+    .desc ul { margin-left:14px; }
+    table.days th { font-size:8pt; }
+    table.days td { font-size:8pt; padding:2px 5px; }
+    table.days tfoot td { font-weight:bold; background:#e8e8e8; }
+    .footer { width:100%; border-collapse:collapse; margin-top:5mm; }
+    .footer td { border:.5pt solid #aaa; padding:4px 8px; height:22mm; vertical-align:top; }
+    .footer td.date { font-weight:bold; vertical-align:middle; width:40%; }
+  </style></head><body>
+  <div class="top">
+    <div class="left"><b>FORTOOL-TECHNOLOGIES, S.R.O.</b><br><br>
+      Dukelská 626/88<br>293 01 Mladá Boleslav<br>IČ: 06037976</div>
+    <div class="right">
+      <div class="title">VÝKAZ PRÁCE</div>
+      <div class="sub">MĚSÍC: ${MESICE[m-1].toUpperCase()} 2026</div>
+    </div>
+  </div>
+  <table>
+    <tr><td class="lb">FIRMA:</td><td>ŠIMON JELEŇÁK</td></tr>
+    <tr><td class="lb">IČ:</td><td>43758207</td></tr>
+    <tr><td class="lb">ADRESA:</td><td>ZDĚTÍN 151, 294 71 BENÁTKY NAD JIZEROU</td></tr>
+  </table>
+  <table>
+    <tr><th>JMÉNO</th><th>SAZBA</th><th>HODIN CELKEM</th><th>CELKEM</th></tr>
+    <tr><td>ŠIMON JELEŇÁK</td><td>${rate} KČ</td><td>${total}</td>
+        <td>${(total*rate).toLocaleString("cs-CZ")} KČ</td></tr>
+  </table>
+  <div class="desc">Poradenská činnost k obchodním službám:
+    <ul>
+      <li>zpracování obchodních poptávek</li>
+      <li>příprava podkladů a vedení technických jednání v rámci těchto poptávek</li>
+      <li>získávání potřebných informací pro poptávky a komunikace s interními odděleními zákazníka.</li>
+      <li>kalkulace a návrh cenových sazeb</li>
+      <li>tvorba konkrétních nabídek na základě technických jednání</li>
+      <li>tvorba předávacích protokolů a další práce s nimi</li>
+    </ul>
+  </div>
+  <table class="days">
+    <thead><tr>
+      <th style="width:90px">Datum</th>
+      <th style="width:70px">Den</th>
+      <th style="width:70px;text-align:center">Začátek</th>
+      <th style="width:70px;text-align:center">Konec</th>
+      <th style="width:55px;text-align:center">Hodin</th>
+      <th style="text-align:right;padding-right:8px">Odpracované hodiny celkem</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr>
+      <td colspan="5" style="text-align:right;padding-right:8px">Celkem za měsíc:</td>
+      <td style="text-align:center;font-size:11pt">${total}</td>
+    </tr></tfoot>
+  </table>
+  <table class="footer">
+    <tr>
+      <td style="width:60%"><div style="font-size:8pt;font-weight:bold;margin-bottom:2mm">PODPIS</div></td>
+      <td class="date">DATUM: ${lastDStr}</td>
+    </tr>
+  </table>
+  </body></html>`;
+}
+
 function activeMonth() {
   const active = document.querySelector(".panel.on");
   if (!active || active.id==="panel-overview") return null;
@@ -631,46 +734,27 @@ async function exportPdf() {
   btn.disabled = true;
 
   try {
-    // Sestavíme tiskovou verzi obsahu do dočasného divu
-    const panel = document.getElementById("panel-m"+m);
+    // Sestavíme izolovaný HTML dokument pro snímání — bez paddingů, sidebar, karet
+    const printHtml = buildPrintHtml(m);
 
-    // Dočasně aplikujeme tiskový styl
-    document.querySelectorAll(".no-print").forEach(el => el.dataset._vis = el.style.display || "");
-    document.querySelectorAll(".no-print").forEach(el => el.style.display = "none");
-    document.querySelectorAll(".print-header").forEach(el => el.style.display = "block");
+    // Vykreslíme do skrytého iframe přesné šířky A4 (794px @ 96dpi)
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:794px;height:1123px;border:none;";
+    document.body.appendChild(iframe);
+    iframe.contentDocument.open();
+    iframe.contentDocument.write(printHtml);
+    iframe.contentDocument.close();
+    await new Promise(r => iframe.onload = r || setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200)); // počkáme na vykreslení
 
-    // Aplikujeme tiskové CSS na tabulku (html2canvas nečte @media print)
-    const tbl = panel.querySelector("table.dt");
-    const allCells = panel.querySelectorAll("table.dt th, table.dt td");
-    const savedStyles = [];
-    allCells.forEach(cell => {
-      savedStyles.push({ el: cell, color: cell.style.color, bg: cell.style.background });
-      cell.style.color = "#000";
-      cell.style.background = cell.closest("tr.tv") ? "#f0f0f0"
-                            : cell.closest("tr.ts") ? "#f0f0f0"
-                            : cell.closest("tr.th") ? "#f0f0f0"
-                            : cell.tagName === "TH"  ? "#e0e0e0"
-                            : "#ffffff";
-    });
-    // Tabulka na plnou šířku jako při tisku
-    const savedTblStyle = tbl ? { width: tbl.style.width, layout: tbl.style.tableLayout } : null;
-    if (tbl) { tbl.style.width = "100%"; tbl.style.tableLayout = "fixed"; }
-
-    const canvas = await html2canvas(panel, {
+    const canvas = await html2canvas(iframe.contentDocument.body, {
       scale: 2,
       useCORS: true,
       backgroundColor: "#ffffff",
+      width: 794,
       windowWidth: 794,
     });
-
-    // Obnovíme styly
-    savedStyles.forEach(s => { s.el.style.color = s.color; s.el.style.background = s.bg; });
-    if (tbl && savedTblStyle) { tbl.style.width = savedTblStyle.width; tbl.style.tableLayout = savedTblStyle.layout; }
-    document.querySelectorAll(".no-print").forEach(el => {
-      el.style.display = el.dataset._vis || "";
-      delete el.dataset._vis;
-    });
-    document.querySelectorAll(".print-header").forEach(el => el.style.display = "");
+    document.body.removeChild(iframe);
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
