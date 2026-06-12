@@ -234,6 +234,9 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
   <button class="btn no-print" id="btnGraph"
           style="background:#0078d4;color:#fff"
           onclick="loadFromOutlook()">📅 Načíst z Outlooku</button>
+  <button class="btn no-print" id="btnGoogle"
+          style="background:#4285f4;color:#fff"
+          onclick="loadFromGoogle()">📅 Načíst z Google</button>
   <button class="btn no-print" id="btnIcs"
           style="background:#005a9e;color:#fff"
           onclick="document.getElementById('icsInput').click()" title="Záloha: export .ics z Outlooku">📎 .ics</button>
@@ -1032,6 +1035,76 @@ async function loadFromOutlook() {
     showToast("Chyba: " + e.message, true);
   } finally {
     btn.textContent = "📅 Načíst z Outlooku";
+    btn.disabled = false;
+  }
+}
+
+// ══ GOOGLE CALENDAR — načtení přes soukromou ICS URL ═════════════════════════
+
+async function loadFromGoogle() {
+  const btn = document.getElementById("btnGoogle");
+  const STORAGE_KEY = "google_ics_url";
+
+  // Načteme uloženou URL nebo požádáme o novou
+  let icsUrl = localStorage.getItem(STORAGE_KEY) || "";
+
+  const entered = await new Promise(resolve => {
+    const old = document.getElementById("googleUrlDialog");
+    if (old) old.remove();
+    const dlg = document.createElement("div");
+    dlg.id = "googleUrlDialog";
+    dlg.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
+      display:flex;align-items:center;justify-content:center;z-index:9999;`;
+    dlg.innerHTML = `
+      <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:640px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+        <h3 style="margin:0 0 10px;font-size:16px">📅 Načíst z Google Calendar</h3>
+        <p style="margin:0 0 6px;font-size:13px;color:#444;line-height:1.6">
+          Vložte <b>Soukromou adresu ve formátu iCal</b> z Google Calendar:<br>
+          <span style="font-size:11px;color:#888">calendar.google.com → Nastavení → váš kalendář → dole „Soukromá adresa ve formátu iCal"</span>
+        </p>
+        <input id="gIcsUrlInput" type="text" value="${icsUrl.replace(/"/g,'&quot;')}"
+          placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
+          style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:14px">
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="document.getElementById('googleUrlDialog').remove();window._gResolve(null)"
+            style="padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:5px;cursor:pointer">Zrušit</button>
+          <button onclick="window._gResolve(document.getElementById('gIcsUrlInput').value.trim())"
+            style="padding:8px 18px;background:#4285f4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:bold">Načíst</button>
+        </div>
+      </div>`;
+    document.body.appendChild(dlg);
+    window._gResolve = val => { dlg.remove(); resolve(val); };
+    document.getElementById("gIcsUrlInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") window._gResolve(document.getElementById("gIcsUrlInput").value.trim());
+    });
+    // Označit celé pole při kliknutí
+    document.getElementById("gIcsUrlInput").select();
+  });
+
+  if (!entered) return;
+
+  btn.textContent = "⏳ Načítám…";
+  btn.disabled = true;
+
+  try {
+    // CORS proxy — Google Calendar ICS neumožňuje přímý přístup z file://
+    const proxy = "https://corsproxy.io/?";
+    const resp = await fetch(proxy + encodeURIComponent(entered));
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    const text = await resp.text();
+    if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Odpověď neobsahuje platný ICS kalendář. Zkontrolujte URL.");
+
+    // Uložíme URL pro příště
+    localStorage.setItem(STORAGE_KEY, entered);
+
+    // Parsujeme ICS (stejná funkce jako pro import souboru)
+    const events = parseIcs(text);
+    applyAndRender(events);
+  } catch(e) {
+    console.error(e);
+    showToast("Chyba Google Calendar: " + e.message, true);
+  } finally {
+    btn.textContent = "📅 Načíst z Google";
     btn.disabled = false;
   }
 }
