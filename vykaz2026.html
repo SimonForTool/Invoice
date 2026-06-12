@@ -125,23 +125,33 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
 .toast.err { background:#e74c3c; }
 
 /* ══ TISK / PDF ══════════════════════════════════════════════════════════════
-   Při tisku se zobrazí pouze aktivní měsíc ve formátu výkazu práce.         */
+   Při tisku se zobrazí pouze aktivní měsíc ve formátu výkazu práce.
+   Obsah je vždy přizpůsoben na 1 stránku A4.                               */
 @media print {
   header, .tabs, .m-bar, .leg, .yr-stats, .yr-grid, .card-h,
   .panel:not(.on), tfoot, .no-print { display:none !important; }
 
-  body { background:#fff; font-family:Arial,sans-serif; font-size:9pt; color:#111; }
-  main { padding:0; }
+  html, body { background:#fff !important; margin:0 !important; padding:0 !important; }
+  main { padding:0 !important; margin:0 !important; }
   .panel.on { display:block !important; }
-  .card { box-shadow:none; border-radius:0; }
-  .card-b { padding:0; }
-
-  /* Přidáme hlavičku výkazu pro tisk */
+  .card { box-shadow:none !important; border-radius:0 !important; }
+  .card-b { padding:0 !important; }
   .print-header { display:block !important; }
 
-  table.dt { font-size:8pt; }
+  /* Škálování na 1 stránku A4 — celý obsah se vejde */
+  .panel.on {
+    position: absolute;
+    top: 0; left: 0;
+    width: 210mm;
+    transform-origin: top left;
+    /* scale dopočítá JS před tiskem, výchozí hodnota pro jistotu */
+    transform: scale(1);
+  }
+
+  table.dt { font-size:7.5pt; }
   table.dt th { background:#f0f0f0 !important; color:#000 !important;
                 -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  table.dt td { padding: 1.5px 4px !important; }
   table.dt tr.tv td { background:#fff8dc !important;
                       -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   table.dt tr.ts td { background:#fde8e8 !important;
@@ -152,7 +162,7 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
   .pt { display:inline !important; }
   .hc { font-weight:700; }
 
-  @page { size:A4; margin:15mm; }
+  @page { size:A4 portrait; margin:10mm; }
 }
 
 /* Hlavička výkazu pro tisk (skryta na obrazovce) */
@@ -568,10 +578,29 @@ function pdfFilename(m) {
 function printPdf() {
   const m = activeMonth();
   if (!m) { showToast("Přejděte nejprve na konkrétní měsíc.", true); return; }
+
+  // Spočítáme scale tak, aby se obsah vešel na 1 stránku A4 (výška 277mm po odečtení margins 10mm*2)
+  const panel = document.getElementById("panel-m"+m);
+  const contentH = panel.scrollHeight;           // px na obrazovce
+  const a4H = 277 * 3.7795;                      // 277mm → px (96dpi)
+  const scale = Math.min(1, a4H / contentH);
+
+  panel.style.transform = `scale(${scale})`;
+  panel.style.transformOrigin = "top left";
+  panel.style.width = (100 / scale) + "%";
+
   const old = document.title;
   document.title = pdfFilename(m).replace(".pdf","");
+
   window.print();
-  setTimeout(() => document.title = old, 1000);
+
+  // Vrátíme stav po tisku
+  setTimeout(() => {
+    panel.style.transform = "";
+    panel.style.transformOrigin = "";
+    panel.style.width = "";
+    document.title = old;
+  }, 500);
 }
 
 async function exportPdf() {
@@ -611,19 +640,21 @@ async function exportPdf() {
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 10;
-    const imgW = pageW - margin*2;
-    const imgH = (canvas.height * imgW) / canvas.width;
+    const maxW = pageW - margin * 2;
+    const maxH = pageH - margin * 2;
 
-    const img = canvas.toDataURL("image/jpeg", 0.92);
-
-    // Pokud obsah přesahuje stránku, rozdělíme na více stránek
-    let yOffset = 0;
-    while (yOffset < imgH) {
-      if (yOffset > 0) pdf.addPage();
-      pdf.addImage(img, "JPEG", margin, margin - (yOffset * pageW / imgW),
-                   imgW, imgH);
-      yOffset += pageH - margin*2;
+    // Přizpůsobíme rozměry tak, aby se obsah vždy vešel na 1 stránku
+    const ratio = canvas.width / canvas.height;
+    let finalW = maxW;
+    let finalH = maxW / ratio;
+    if (finalH > maxH) {
+      finalH = maxH;
+      finalW = maxH * ratio;
     }
+    const offsetX = margin + (maxW - finalW) / 2;
+
+    const img = canvas.toDataURL("image/jpeg", 0.95);
+    pdf.addImage(img, "JPEG", offsetX, margin, finalW, finalH);
 
     pdf.save(pdfFilename(m));
     showToast(`✓ Staženo: ${pdfFilename(m)}`);
