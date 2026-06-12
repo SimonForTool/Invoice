@@ -183,6 +183,14 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
   <h1>📋 Výkaz práce 2026 — Šimon Jeleňák</h1>
   <div class="sp"></div>
   <span class="saved-lbl" id="saveLbl"></span>
+  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.85)" class="no-print">
+    Sazba:
+    <input id="rateInput" type="number" min="1" step="1"
+           style="width:70px;padding:4px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.4);
+                  background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;text-align:center"
+           onchange="changeRate(this.value)">
+    <span style="color:rgba(255,255,255,.7)">Kč/hod</span>
+  </label>
   <button class="btn btn-pdf no-print" onclick="printPdf()">🖨 Tisk / PDF</button>
   <button class="btn no-print" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
           onclick="if(confirm('Resetovat všechna data na výchozí hodnoty?')){localStorage.removeItem(\'vykaz2026\');location.reload();}">↺ Reset dat</button>
@@ -363,7 +371,7 @@ function buildMonthPanel(m) {
       </table>
       <table class="ph-rate">
         <tr><th>JMÉNO</th><th>SAZBA</th><th>HODIN CELKEM</th><th>CELKEM</th></tr>
-        <tr><td>ŠIMON JELEŇÁK</td><td>${RATE} KČ</td>
+        <tr><td>ŠIMON JELEŇÁK</td><td>${DATA.rate} KČ</td>
             <td id="ph-hours${m}">–</td><td id="ph-total${m}">–</td></tr>
       </table>
       <div class="ph-desc">
@@ -475,11 +483,11 @@ function renderMonth(m) {
   const phH = document.getElementById("ph-hours"+m);
   const phT = document.getElementById("ph-total"+m);
   if (phH) phH.textContent = total;
-  if (phT) phT.textContent = (total*RATE).toLocaleString("cs-CZ")+" KČ";
+  if (phT) phT.textContent = (total*DATA.rate).toLocaleString("cs-CZ")+" KČ";
 
   const mhead = document.getElementById("mhead"+m);
   if (mhead) mhead.textContent =
-    `${MESICE[m-1]} 2026 — ${total} hodin  |  ${(total*RATE).toLocaleString("cs-CZ")} Kč`;
+    `${MESICE[m-1]} 2026 — ${total} hodin  |  ${(total*DATA.rate).toLocaleString("cs-CZ")} Kč`;
 
   document.getElementById("bdg"+m).textContent = total+"h";
 }
@@ -491,7 +499,7 @@ function renderOverview() {
 
   for (let m=1; m<=12; m++) {
     const s = monthStats(m);
-    totH+=s.hours; totK+=s.hours*RATE; totV+=s.vac; totS+=s.sick;
+    totH+=s.hours; totK+=s.hours*DATA.rate; totV+=s.vac; totS+=s.sick;
     const mc = document.createElement("div");
     mc.className="mc";
     mc.onclick=()=>document.querySelector(`[data-p="m${m}"]`).click();
@@ -500,7 +508,7 @@ function renderOverview() {
       <div class="mc-b">
         <div class="r"><span>Odprac. dny</span><span class="vv">${s.work}</span></div>
         <div class="r"><span>Hodiny</span><span class="vv">${s.hours}</span></div>
-        <div class="r"><span>Fakturace</span><span class="vv">${s.hours?(s.hours*RATE).toLocaleString("cs-CZ")+" Kč":"–"}</span></div>
+        <div class="r"><span>Fakturace</span><span class="vv">${s.hours?(s.hours*DATA.rate).toLocaleString("cs-CZ")+" Kč":"–"}</span></div>
       </div>
       <div class="mc-f">
         ${s.vac ?`<span class="pill pv">🌴 ${s.vac}d dov.</span>`:"<span></span>"}
@@ -514,7 +522,7 @@ function renderOverview() {
     <div class="sbox"><div class="v">${totK.toLocaleString("cs-CZ")} Kč</div><div class="l">Fakturace celkem</div></div>
     <div class="sbox"><div class="v">${totV}</div><div class="l">Dní dovolené</div></div>
     <div class="sbox"><div class="v">${totS}</div><div class="l">Dní nemoci</div></div>
-    <div class="sbox"><div class="v">${RATE} Kč</div><div class="l">Sazba / hod</div></div>`;
+    <div class="sbox"><div class="v">${DATA.rate} Kč</div><div class="l">Sazba / hod</div></div>`;
 }
 
 // ══ ZMĚNY DAT ═════════════════════════════════════════════════════════════════
@@ -525,6 +533,16 @@ function chType(m, i, val) {
   else { const s=randShift(i*31+m); d.start=d.start||s.start; d.end=d.end||s.end; }
   renderMonth(m); renderOverview(); saveData(true);
 }
+function changeRate(val) {
+  const r = parseInt(val);
+  if (!r || r < 1) return;
+  DATA.rate = r;
+  renderOverview();
+  for (let m=1; m<=12; m++) renderMonth(m);
+  saveData(true);
+  showToast(`Sazba uložena: ${r} Kč/hod`);
+}
+
 function chTime(m, i, fld, val) {
   DATA.months[String(m)].days[i][fld]=val;
   renderMonth(m); renderOverview(); saveData(true);
@@ -561,6 +579,7 @@ buildTabs();
 for (let m=1; m<=12; m++) buildMonthPanel(m);
 for (let m=1; m<=12; m++) renderMonth(m);
 renderOverview();
+document.getElementById("rateInput").value = DATA.rate || 400;
 </script>
 </body>
 </html>
