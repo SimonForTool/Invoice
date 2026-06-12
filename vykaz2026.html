@@ -106,7 +106,7 @@ table.dt th:nth-child(3), table.dt td:nth-child(3) { width:90px; }   /* Typ */
 table.dt th:nth-child(4), table.dt td:nth-child(4) { width:80px; }   /* Začátek */
 table.dt th:nth-child(5), table.dt td:nth-child(5) { width:80px; }   /* Konec */
 table.dt th:nth-child(6), table.dt td:nth-child(6) { width:60px; text-align:center; } /* Hodin */
-table.dt th:last-child,   table.dt td:last-child   { width:auto; text-align:right; padding-right:12px; } /* Odprac. */
+table.dt th:nth-child(7), table.dt td:nth-child(7) { width:auto; text-align:right; padding-right:12px; } /* Odprac. */
 table.dt tr.tw td { background:#fff; }
 table.dt tr.tv td { background:var(--yel); }
 table.dt tr.ts td { background:var(--red); }
@@ -446,8 +446,7 @@ function buildMonthPanel(m) {
             <th style="width:75px">Začátek</th>
             <th style="width:75px">Konec</th>
             <th style="width:52px;text-align:center">Hodin</th>
-            <th>Poradenská činnost</th>
-            <th style="text-align:right">Odpracované hodiny celkem</th>
+            <th style="text-align:right;padding-right:12px">Odpracované hodiny celkem</th>
           </tr></thead>
           <tbody id="tb${m}"></tbody>
           <tfoot id="tf${m}"></tfoot>
