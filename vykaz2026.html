@@ -878,33 +878,90 @@ async function getToken() {
 
   if (!popup) throw new Error("Prohlížeč zablokoval popup okno. Povolte popupy pro tento soubor.");
 
+  // Po přihlášení Microsoft přesměruje na http://localhost/#access_token=...
+  // Prohlížeč zobrazí chybovou stránku, ale token je v adresním řádku.
+  // Zobrazíme dialog pro vložení URL.
   return new Promise((resolve, reject) => {
+    // Nejprve zkusíme automatické čtení (funguje pokud popup není blokován cross-origin)
     const timer = setInterval(() => {
       try {
         const url = popup.location.href;
-        if (url.startsWith("http://localhost")) {
+        if (url && url.startsWith("http://localhost")) {
           clearInterval(timer);
           popup.close();
-          const hash   = url.includes("#") ? url.split("#")[1] : url.split("?")[1] || "";
-          const parsed = new URLSearchParams(hash);
-          const token  = parsed.get("access_token");
-          const error  = parsed.get("error_description") || parsed.get("error");
-          if (token) {
-            const expiry = Date.now() + parseInt(parsed.get("expires_in") || "3600") * 1000;
-            sessionStorage.setItem("graph_token", JSON.stringify({ token, expiry }));
-            resolve(token);
-          } else {
-            reject(new Error(error || "Token nebyl získán."));
-          }
+          extractToken(url, resolve, reject);
+          return;
         }
-      } catch(e) {
-        // Cross-origin — stránka je stále na login.microsoftonline.com, čekáme
-      }
+      } catch(e) { /* cross-origin, čekáme */ }
       if (popup.closed) {
         clearInterval(timer);
-        reject(new Error("Přihlašovací okno bylo zavřeno před dokončením."));
+        // Popup byl zavřen — zobrazíme manuální dialog
+        showTokenPasteDialog(resolve, reject);
       }
     }, 300);
+
+    // Po 60s timeout — zobrazíme manuální dialog
+    setTimeout(() => {
+      clearInterval(timer);
+      if (!popup.closed) popup.close();
+      showTokenPasteDialog(resolve, reject);
+    }, 60000);
+  });
+}
+
+function extractToken(url, resolve, reject) {
+  const hash   = url.includes("#") ? url.split("#")[1] : url.split("?")[1] || "";
+  const parsed = new URLSearchParams(hash);
+  const token  = parsed.get("access_token");
+  if (token) {
+    const expiry = Date.now() + parseInt(parsed.get("expires_in") || "3600") * 1000;
+    sessionStorage.setItem("graph_token", JSON.stringify({ token, expiry }));
+    resolve(token);
+  } else {
+    reject(new Error(parsed.get("error_description") || parsed.get("error") || "Token nebyl nalezen v URL."));
+  }
+}
+
+function showTokenPasteDialog(resolve, reject) {
+  // Odstraníme případný starý dialog
+  const old = document.getElementById("tokenDialog");
+  if (old) old.remove();
+
+  const dlg = document.createElement("div");
+  dlg.id = "tokenDialog";
+  dlg.style.cssText = `
+    position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
+    display:flex;align-items:center;justify-content:center;z-index:9999;`;
+  dlg.innerHTML = `
+    <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:600px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <h3 style="margin:0 0 12px;font-size:16px">📋 Zkopírujte URL z popup okna</h3>
+      <p style="margin:0 0 14px;font-size:13px;color:#444;line-height:1.6">
+        Přihlásili jste se. Popup zobrazuje chybovou stránku, ale v adresním řádku je URL s tokenem.<br>
+        <b>Zkopírujte celou URL adresu</b> z adresního řádku popup okna a vložte ji sem:
+      </p>
+      <img src="" style="display:none" onerror="">
+      <input id="tokenUrlInput" type="text" placeholder="localhost/#access_token=eyJ..."
+        style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:14px">
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="document.getElementById('tokenDialog').remove();window._tokenReject&&window._tokenReject(new Error('Zrušeno'))"
+          style="padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:5px;cursor:pointer">Zrušit</button>
+        <button onclick="window._tokenConfirm()"
+          style="padding:8px 18px;background:#0078d4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:bold">Potvrdit</button>
+      </div>
+    </div>`;
+  document.body.appendChild(dlg);
+
+  window._tokenReject  = reject;
+  window._tokenConfirm = () => {
+    const url = document.getElementById("tokenUrlInput").value.trim();
+    dlg.remove();
+    if (!url) { reject(new Error("Nebyla zadána žádná URL.")); return; }
+    extractToken(url.startsWith("http") ? url : "http://" + url, resolve, reject);
+  };
+
+  // Enter potvrdí
+  document.getElementById("tokenUrlInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") window._tokenConfirm();
   });
 }
 
