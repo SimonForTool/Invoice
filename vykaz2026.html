@@ -983,30 +983,31 @@ async function loadFromOutlook() {
     const me = await meResp.json();
     console.log("Přihlášen jako:", me.userPrincipalName, me.displayName);
 
-    // Načteme všechny kalendáře a prohledáme každý
-    const calResp = await fetch("https://graph.microsoft.com/v1.0/me/calendars?$select=id,name&$top=50",
-      { headers: { Authorization: `Bearer ${token}` } });
-    const calData = await calResp.json();
-    const calendars = calData.value || [];
-    console.log("Kalendáře:", calendars.map(c => c.name));
+    const h = { Authorization: `Bearer ${token}` };
 
-    const dateFilter = `startDateTime=2026-01-01T00:00:00Z&endDateTime=2026-12-31T23:59:59Z`;
+    // Nejprve zkusíme $search pro klíčová slova
+    const searchResp = await fetch(
+      `https://graph.microsoft.com/v1.0/me/events?$search="Dovolená OR Nemoc OR Dovolena"&$select=subject,start,end&$top=100`, { headers: h });
     let events = [];
-    for (const cal of calendars) {
-      const r = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendars/${cal.id}/calendarView?${dateFilter}&$select=subject,start,end&$top=500`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!r.ok) { console.warn(`Kalendář "${cal.name}" selhal:`, r.status); continue; }
-      const d = await r.json();
-      events = events.concat(d.value || []);
+    if (searchResp.ok) {
+      events = (await searchResp.json()).value || [];
+      console.log("$search výsledky:", events.map(e => `${(e.start.dateTime||e.start.date||"").slice(0,10)}: ${e.subject}`));
     }
-    console.log(`Graf: načteno ${events.length} událostí celkem.`);
-    const juneEvents = events.filter(e => {
-      const s = e.start.dateTime || e.start.date || "";
-      return s.startsWith("2026-06");
-    });
-    console.log("Události v červnu 2026:", juneEvents.map(e => `${(e.start.dateTime||e.start.date||"").slice(0,10)}: ${e.subject}`));
+
+    // Fallback: všechny osobní kalendáře
+    const calResp = await fetch("https://graph.microsoft.com/v1.0/me/calendars?$select=id,name&$top=50", { headers: h });
+    const calendars = (await calResp.json()).value || [];
+    console.log("Kalendáře:", calendars.map(c => c.name));
+    const df = `startDateTime=2026-01-01T00:00:00Z&endDateTime=2026-12-31T23:59:59Z`;
+    let allEvents = [];
+    for (const cal of calendars) {
+      const r = await fetch(`https://graph.microsoft.com/v1.0/me/calendars/${cal.id}/calendarView?${df}&$select=subject,start,end&$top=500`, { headers: h });
+      if (!r.ok) continue;
+      allEvents = allEvents.concat((await r.json()).value || []);
+    }
+    const kwEvents = allEvents.filter(e => /dovolená|dovolena|nemoc/i.test(e.subject || ""));
+    console.log("Dovolená/Nemoc z calendarView:", kwEvents.map(e => `${(e.start.dateTime||e.start.date||"").slice(0,10)}: ${e.subject}`));
+    if (events.length === 0) events = kwEvents;
 
     // Převedeme Graph události do stejného formátu jako ICS parser
     // dateTime z Graph je v lokálním čase daného timezone, ne UTC — nepřidáváme Z
