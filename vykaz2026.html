@@ -1087,30 +1087,30 @@ async function loadFromGoogle() {
   btn.disabled = true;
 
   try {
-    // Zkusíme více CORS proxy jako zálohu
-    const proxies = [
-      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      url => `https://thingproxy.freeboard.io/fetch/${url}`,
-    ];
-    let text = null;
-    let lastErr = null;
-    for (const makeUrl of proxies) {
-      try {
-        const r = await fetch(makeUrl(entered));
-        if (r.ok) { text = await r.text(); break; }
-        lastErr = `HTTP ${r.status}`;
-      } catch(e) { lastErr = e.message; }
-    }
-    if (!text) throw new Error(`Všechny proxy selhaly (${lastErr}). Zkuste importovat .ics soubor ručně.`);
-    if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Odpověď neobsahuje platný ICS kalendář. Zkontrolujte URL.");
-
-    // Uložíme URL pro příště
+    // Přímé stažení — otevřeme v novém okně, Chrome stáhne .ics automaticky
+    // Zároveň zobrazíme instrukci
+    window.open(entered, "_blank");
     localStorage.setItem(STORAGE_KEY, entered);
 
-    // Parsujeme ICS (stejná funkce jako pro import souboru)
-    const events = parseIcs(text);
-    applyAndRender(events);
+    btn.textContent = "📅 Načíst z Google";
+    btn.disabled = false;
+
+    // Informační dialog
+    const info = document.createElement("div");
+    info.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
+      display:flex;align-items:center;justify-content:center;z-index:9999;`;
+    info.innerHTML = `
+      <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:480px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+        <h3 style="margin:0 0 12px;font-size:16px">📥 Soubor se stahuje…</h3>
+        <p style="margin:0 0 14px;font-size:13px;color:#444;line-height:1.7">
+          Chrome právě stahuje váš Google kalendář jako <b>.ics soubor</b>.<br>
+          Po dokončení stahování klikněte na tlačítko <b>📎 .ics</b> a vyberte stažený soubor.
+        </p>
+        <button onclick="this.closest('div').parentElement.remove()"
+          style="padding:8px 18px;background:#4285f4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:bold">OK</button>
+      </div>`;
+    document.body.appendChild(info);
+    return;
   } catch(e) {
     console.error(e);
     showToast("Chyba Google Calendar: " + e.message, true);
