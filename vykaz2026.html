@@ -6,7 +6,6 @@
 <title>Výkaz práce 2026 – Šimon Jeleňák</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
 /* ══ ZÁKLADNÍ STYL ══════════════════════════════════════════════════════════ */
 :root {
@@ -234,7 +233,8 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
           onclick="if(confirm('Resetovat všechna data na výchozí hodnoty?')){localStorage.removeItem(\'vykaz2026\');location.reload();}">↺ Reset dat</button>
   <button class="btn no-print" id="btnOutlook"
           style="background:#0078d4;color:#fff"
-          onclick="loadFromOutlook()">📅 Načíst z Outlooku</button>
+          onclick="document.getElementById('icsInput').click()">📅 Načíst z Outlooku (.ics)</button>
+  <input type="file" id="icsInput" accept=".ics" style="display:none" onchange="loadIcs(this)">
 </header>
 
 <div class="tabs" id="tabBar">
@@ -833,160 +833,155 @@ for (let m=1; m<=12; m++) renderMonth(m);
 renderOverview();
 document.getElementById("rateInput").value = DATA.rate || 400;
 
-// ══ MICROSOFT OUTLOOK — GRAPH API ════════════════════════════════════════════
+// ══ IMPORT ICS (Outlook kalendář) ═══════════════════════════════════════════
 
-const MSAL_CONFIG = {
-  clientId: "DOPLŇTE_CLIENT_ID",   // ← Application (client) ID z Azure
-  tenantId: "DOPLŇTE_TENANT_ID",   // ← Directory (tenant) ID z Azure
-};
+const KW_VACATION = ["dovolená šimon", "dovolena simon", "dovolená", "vacation"];
+const KW_SICK     = ["nemoc šimon", "nemoc", "sick leave", "pracovní neschopnost"];
 
-// Klíčová slova pro rozpoznání dovolené a nemoci v kalendáři
-const KW_VACATION = ["dovolená šimon", "dovolena simon", "dovolená", "vacation", "leave"];
-const KW_SICK     = ["nemoc šimon", "nemoc", "sick", "sick leave", "pracovní neschopnost"];
-
-let msalApp = null;
-
-function getMsalApp() {
-  if (msalApp) return msalApp;
-  if (MSAL_CONFIG.clientId.startsWith("DOPLŇTE")) {
-    throw new Error("Nejprve vyplňte CLIENT_ID a TENANT_ID v kódu souboru.\n\nViz pokyny v horní části HTML souboru.");
-  }
-  msalApp = new msal.PublicClientApplication({
-    auth: {
-      clientId: MSAL_CONFIG.clientId,
-      authority: `https://login.microsoftonline.com/${MSAL_CONFIG.tenantId}`,
-      redirectUri: "http://localhost",
-    },
-    cache: { cacheLocation: "localStorage" },
-  });
-  return msalApp;
-}
-
-async function getAccessToken() {
-  const app    = getMsalApp();
-  const scopes = ["Calendars.Read"];
-  const accounts = app.getAllAccounts();
-
-  // Zkusíme silent token — pokud selže, otevřeme popup
-  if (accounts.length > 0) {
-    try {
-      const res = await app.acquireTokenSilent({ scopes, account: accounts[0] });
-      return res.accessToken;
-    } catch (e) { /* silent selhal → popup */ }
-  }
-  const res = await app.loginPopup({ scopes });
-  return res.accessToken;
-}
-
-async function fetchCalendarEvents(token, year, month) {
-  const start = new Date(year, month - 1, 1).toISOString();
-  const end   = new Date(year, month, 0, 23, 59, 59).toISOString();
-
-  const url = `https://graph.microsoft.com/v1.0/me/calendarView`
-    + `?startDateTime=${start}&endDateTime=${end}`
-    + `&$select=subject,start,end,showAs`
-    + `&$top=100`;
-
-  const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!resp.ok) throw new Error(`Graph API chyba: ${resp.status} ${resp.statusText}`);
-  const data = await resp.json();
-  return data.value || [];
-}
-
-function classifyEvent(subject) {
-  const s = subject.toLowerCase().trim();
-  if (KW_VACATION.some(k => s.includes(k))) return "vacation";
-  if (KW_SICK.some(k => s.includes(k)))     return "sick";
+function classifySubject(subject) {
+  const s = (subject || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+  const sv = s.replace(/[^a-z ]/g,"");
+  if (KW_VACATION.some(k => s.includes(k.normalize("NFD").replace(/[̀-ͯ]/g,"")))) return "vacation";
+  if (KW_SICK.some(k => s.includes(k.normalize("NFD").replace(/[̀-ͯ]/g,"")))) return "sick";
   return null;
 }
 
-// Vrátí seznam ISO dat pokrytých událostí
-function eventDates(event) {
+// Parsuje ICS datum — vrací "YYYY-MM-DD" v lokálním čase
+function parseIcsDate(val) {
+  if (!val) return null;
+  // Celodenní datum: YYYYMMDD
+  if (/^\d{8}$/.test(val)) {
+    return `${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}`;
+  }
+  // DateTime: YYYYMMDDTHHmmss[Z]
+  const y=val.slice(0,4), mo=val.slice(4,6), d=val.slice(6,8);
+  const h=val.slice(9,11), mi=val.slice(11,13);
+  if (val.endsWith("Z")) {
+    return localISO(new Date(`${y}-${mo}-${d}T${h}:${mi}:00Z`));
+  }
+  return `${y}-${mo}-${d}`;
+}
+
+// Vrátí všechny ISO datumy od start do end (end je výlučný pro celodenní)
+function datesInRange(startIso, endIso, allDay) {
   const dates = [];
-  let d = new Date(event.start.dateTime || event.start.date + "T00:00:00");
-  const end = new Date(event.end.dateTime || event.end.date + "T00:00:00");
-  while (d < end) {
+  let d = new Date(startIso + "T00:00:00");
+  const e = new Date(endIso  + "T00:00:00");
+  const limit = allDay ? e : new Date(e.getTime() + 86400000);
+  while (d < limit) {
     dates.push(localISO(d));
     d.setDate(d.getDate() + 1);
   }
   return dates;
 }
 
-async function loadFromOutlook() {
-  const btn = document.getElementById("btnOutlook");
-
-  // Zjistíme aktivní měsíc nebo necháme uživatele vybrat
-  let m = activeMonth();
-  if (!m) {
-    // Zobrazíme prompt pro výběr měsíce
-    const input = prompt(
-      "Zadejte číslo měsíce (1–12), pro který chcete načíst data z Outlooku:",
-      new Date().getMonth() + 1
-    );
-    m = parseInt(input);
-    if (!m || m < 1 || m > 12) { showToast("Neplatné číslo měsíce.", true); return; }
+// Parsuje celý ICS text na pole událostí { subject, dates[] }
+function parseIcs(text) {
+  const events = [];
+  const blocks = text.split("BEGIN:VEVENT");
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const get   = key => {
+      const m = block.match(new RegExp(`${key}[^:]*:([^\\r\\n]+)`));
+      return m ? m[1].trim() : null;
+    };
+    const summary = get("SUMMARY") || "";
+    const dtstart = get("DTSTART") || "";
+    const dtend   = get("DTEND")   || get("DTSTART") || "";
+    const allDay  = /^\d{8}$/.test(dtstart);
+    const startIso = parseIcsDate(dtstart);
+    const endIso   = parseIcsDate(dtend);
+    if (!startIso) continue;
+    events.push({
+      subject: summary,
+      dates: datesInRange(startIso, endIso || startIso, allDay),
+    });
   }
+  return events;
+}
 
-  btn.textContent = "⏳ Přihlašuji…";
-  btn.disabled = true;
-
-  try {
-    const token  = await getAccessToken();
-    btn.textContent = "⏳ Načítám kalendář…";
-
-    const events = await fetchCalendarEvents(token, 2026, m);
-
-    // Sestavíme mapu datum → typ
-    const typeMap = {};
-    for (const ev of events) {
-      const type = classifyEvent(ev.subject);
-      if (!type) continue;
-      for (const iso of eventDates(ev)) {
+function applyEventsToMonth(events, m) {
+  // Sestavíme mapu datum → typ pouze pro rok 2026 a měsíc m
+  const typeMap = {};
+  for (const ev of events) {
+    const type = classifySubject(ev.subject);
+    if (!type) continue;
+    for (const iso of ev.dates) {
+      if (iso.startsWith(`2026-${String(m).padStart(2,"0")}`)) {
         typeMap[iso] = type;
       }
     }
-
-    if (Object.keys(typeMap).length === 0) {
-      showToast(`V ${MESICE[m-1]} nenalezeny žádné události Dovolená/Nemoc.`, true);
-      return;
-    }
-
-    // Aplikujeme na data výkazu
-    let changed = 0;
-    for (const day of DATA.months[String(m)]?.days || []) {
-      if (day.type === "holiday") continue;      // státní svátky neměníme
-      const newType = typeMap[day.date];
-      if (newType && day.type !== newType) {
-        day.type  = newType;
-        day.start = null;
-        day.end   = null;
-        changed++;
-      } else if (!newType && day.type !== "work") {
-        // Den není v Outlooku jako volno → vrátíme na práci
-        day.type  = "work";
-        day.start = day.start || "12:00";
-        day.end   = day.end   || "20:00";
-        changed++;
-      }
-    }
-
-    renderMonth(m);
-    renderOverview();
-    saveData(true);
-
-    // Přepneme na správný měsíc
-    document.querySelector(`[data-p="m${m}"]`).click();
-    showToast(`✓ ${MESICE[m-1]}: načteno ${Object.keys(typeMap).length} dní z Outlooku (${changed} změn)`);
-
-  } catch (e) {
-    console.error(e);
-    showToast(e.message || "Chyba při připojení k Outlooku.", true);
-  } finally {
-    btn.textContent = "📅 Načíst z Outlooku";
-    btn.disabled = false;
   }
+  return typeMap;
+}
+
+function loadIcs(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = ""; // reset pro příští výběr stejného souboru
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const events = parseIcs(e.target.result);
+
+      // Zjistíme, které měsíce jsou v ICS obsaženy
+      const monthsFound = new Set();
+      for (const ev of events) {
+        const type = classifySubject(ev.subject);
+        if (!type) continue;
+        for (const iso of ev.dates) {
+          if (iso.startsWith("2026-")) monthsFound.add(parseInt(iso.slice(5,7)));
+        }
+      }
+
+      if (monthsFound.size === 0) {
+        showToast("V souboru nenalezeny žádné události Dovolená Šimon / Nemoc Šimon pro rok 2026.", true);
+        return;
+      }
+
+      let totalChanged = 0;
+      let affectedMonths = [];
+
+      for (const m of monthsFound) {
+        const typeMap = applyEventsToMonth(events, m);
+        let changed = 0;
+
+        for (const day of DATA.months[String(m)]?.days || []) {
+          if (day.type === "holiday") continue;
+          const newType = typeMap[day.date];
+          if (newType && day.type !== newType) {
+            day.type = newType; day.start = null; day.end = null;
+            changed++;
+          } else if (!newType && (day.type === "vacation" || day.type === "sick")) {
+            day.type = "work";
+            day.start = day.start || "12:00";
+            day.end   = day.end   || "20:00";
+            changed++;
+          }
+        }
+
+        if (changed > 0) {
+          renderMonth(m);
+          affectedMonths.push(`${MESICE[m-1]} (${changed}×)`);
+          totalChanged += changed;
+        }
+      }
+
+      renderOverview();
+      saveData(true);
+
+      // Přepneme na první dotčený měsíc
+      const firstM = Math.min(...monthsFound);
+      document.querySelector(`[data-p="m${firstM}"]`).click();
+      showToast(`✓ Načteno z ICS: ${affectedMonths.join(", ")} — celkem ${totalChanged} změn`);
+
+    } catch(err) {
+      console.error(err);
+      showToast("Chyba při čtení ICS souboru: " + err.message, true);
+    }
+  };
+  reader.readAsText(file, "UTF-8");
 }
 </script>
 </body>
