@@ -9,34 +9,28 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "DejaVu Sans", Arial, sans-serif;
+    font-family: Arial, sans-serif;
     font-size: 9pt;
     color: #111;
   }
 
   /* ── Hlavička ── */
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10mm;
+  .header-table {
+    width: 100%;
+    margin-bottom: 8mm;
   }
+  .header-table td { vertical-align: top; padding: 0; border: none; }
   .header-left {
     font-size: 9pt;
-    line-height: 1.6;
+    line-height: 1.7;
   }
-  .header-left strong {
-    font-size: 10pt;
-  }
-  .header-right {
-    text-align: right;
-  }
+  .header-left b { font-size: 10pt; }
+  .header-right { text-align: right; }
   .title {
-    font-size: 28pt;
+    font-size: 26pt;
     font-weight: bold;
     color: #1a1a1a;
     letter-spacing: 1px;
-    line-height: 1;
   }
   .subtitle {
     font-size: 9pt;
@@ -44,166 +38,141 @@
     margin-top: 2px;
   }
 
-  /* ── Tabulka dodavatel ── */
-  .info-table {
+  /* ── Info tabulka ── */
+  table.info {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 5mm;
+    margin-bottom: 4mm;
   }
-  .info-table td {
+  table.info td {
     border: 0.5pt solid #aaa;
     padding: 3px 6px;
-    vertical-align: middle;
+    font-size: 9pt;
   }
-  .info-table td:first-child {
+  table.info td.lbl {
     font-weight: bold;
     width: 25mm;
-    background: #f5f5f5;
+    background: #f0f0f0;
   }
 
-  /* ── Sazba/součet ── */
-  .rate-table {
+  /* ── Sazba ── */
+  table.rate {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 3mm;
   }
-  .rate-table th {
+  table.rate th {
     border: 0.5pt solid #aaa;
     padding: 3px 6px;
-    background: #e8e8e8;
+    background: #e0e0e0;
     font-weight: bold;
     font-size: 8.5pt;
+    text-align: left;
   }
-  .rate-table td {
+  table.rate td {
     border: 0.5pt solid #aaa;
     padding: 3px 6px;
+    font-size: 9pt;
   }
 
   /* ── Popis práce ── */
-  .desc-box {
+  .desc {
     border: 0.5pt solid #aaa;
-    padding: 3px 8px;
-    margin-bottom: 5mm;
+    padding: 3px 8px 4px 8px;
+    margin-bottom: 4mm;
     font-size: 8.5pt;
-    line-height: 1.7;
+    line-height: 1.6;
   }
-  .desc-box ul {
-    margin-left: 12px;
-  }
+  .desc ul { margin-left: 14px; }
 
   /* ── Výkaz dní ── */
-  .days-table {
+  table.days {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 5mm;
+    margin-bottom: 4mm;
+    font-size: 8pt;
   }
-  .days-table th {
-    border-bottom: 1pt solid #aaa;
+  table.days th {
+    border-bottom: 1pt solid #888;
     padding: 2px 4px;
     font-size: 7.5pt;
     font-weight: bold;
     text-align: left;
+    background: #f0f0f0;
   }
-  .days-table th:last-child,
-  .days-table th:nth-child(4) {
-    text-align: center;
-  }
-  .days-table td {
+  table.days td {
     border: 0.3pt solid #ddd;
     padding: 2px 4px;
-    font-size: 8pt;
-    vertical-align: middle;
   }
-  .days-table td:nth-child(2),
-  .days-table td:nth-child(3),
-  .days-table td:nth-child(4) {
-    text-align: center;
-  }
-  .days-table td:last-child {
-    text-align: center;
-    font-weight: bold;
-  }
-  .days-table tr.total-row td {
-    border-top: 1pt solid #aaa;
+  table.days td.center { text-align: center; }
+  table.days td.bold   { font-weight: bold; text-align: center; }
+  table.days tr.total td {
+    border-top: 1pt solid #888;
     border-bottom: none;
     font-weight: bold;
-    font-size: 8.5pt;
+    font-size: 9pt;
     padding: 3px 4px;
+    background: #f5f5f5;
   }
 
   /* ── Patička ── */
-  .footer-table {
+  table.footer {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 5mm;
+    margin-top: 4mm;
   }
-  .footer-table td {
+  table.footer td {
     border: 0.5pt solid #aaa;
     padding: 4px 8px;
     vertical-align: top;
     height: 22mm;
   }
-  .footer-table td.sig-cell {
-    width: 60%;
-  }
-  .footer-table td.date-cell {
-    width: 40%;
-    font-weight: bold;
-    vertical-align: middle;
-    font-size: 9pt;
-  }
-  .sig-label {
-    font-size: 8pt;
-    font-weight: bold;
-    margin-bottom: 2mm;
-  }
-  .sig-img {
-    max-height: 18mm;
-    max-width: 70mm;
-  }
+  table.footer td.sig  { width: 60%; }
+  table.footer td.date { width: 40%; font-weight: bold; font-size: 9pt; vertical-align: middle; }
+  .sig-label { font-size: 8pt; font-weight: bold; margin-bottom: 2mm; }
+  img.sig { height: 18mm; }
 </style>
 </head>
 <body>
 
 <!-- Hlavička -->
-<div class="header">
-  <div class="header-left">
-    <strong>FORTOOL-TECHNOLOGIES, S.R.O.</strong><br><br>
-    Dukelská 626/88<br>
-    293 01 Mladá Boleslav<br>
-    IČ: 06037976
-  </div>
-  <div class="header-right">
-    <div class="title">VÝKAZ PRÁCE</div>
-    <div class="subtitle">MĚSÍC: {{ month_name|upper }} {{ year }}</div>
-  </div>
-</div>
+<table class="header-table">
+  <tr>
+    <td class="header-left" style="width:55%">
+      <b>FORTOOL-TECHNOLOGIES, S.R.O.</b><br><br>
+      Dukelská 626/88<br>
+      293 01 Mladá Boleslav<br>
+      IČ: 06037976
+    </td>
+    <td class="header-right">
+      <div class="title">VÝKAZ PRÁCE</div>
+      <div class="subtitle">MĚSÍC: {{ month_name|upper }} {{ year }}</div>
+    </td>
+  </tr>
+</table>
 
 <!-- Dodavatel -->
-<table class="info-table">
-  <tr><td>FIRMA:</td><td>ŠIMON JELEŇÁK</td></tr>
-  <tr><td>IČ:</td><td>43758207</td></tr>
-  <tr><td>ADRESA:</td><td>ZDĚTÍN 151, 294 71 BENÁTKY NAD JIZEROU</td></tr>
+<table class="info">
+  <tr><td class="lbl">FIRMA:</td><td>ŠIMON JELEŇÁK</td></tr>
+  <tr><td class="lbl">IČ:</td><td>43758207</td></tr>
+  <tr><td class="lbl">ADRESA:</td><td>ZDĚTÍN 151, 294 71 BENÁTKY NAD JIZEROU</td></tr>
 </table>
 
 <!-- Sazba -->
-<table class="rate-table">
+<table class="rate">
   <tr>
-    <th>JMÉNO</th>
-    <th>SAZBA</th>
-    <th>HODIN CELKEM</th>
-    <th>CELKEM</th>
+    <th>JMÉNO</th><th>SAZBA</th><th>HODIN CELKEM</th><th>CELKEM</th>
   </tr>
   <tr>
     <td>ŠIMON JELEŇÁK</td>
     <td>{{ rate }} KČ</td>
     <td>{{ total_hours }}</td>
-    <td>{{ "{:,}".format(total_hours * rate).replace(",", " ") }} KČ</td>
+    <td>{{ "{:,}".format(total_hours * rate).replace(",", " ") }} KČ</td>
   </tr>
 </table>
 
 <!-- Popis práce -->
-<div class="desc-box">
+<div class="desc">
   Poradenská činnost k obchodním službám:
   <ul>
     <li>zpracování obchodních poptávek</li>
@@ -216,41 +185,41 @@
 </div>
 
 <!-- Výkaz dní -->
-<table class="days-table">
+<table class="days">
   <tr>
-    <th>DATUM</th>
-    <th>ZAČÁTEK</th>
-    <th>KONEC</th>
-    <th>HODINY</th>
+    <th style="width:22mm">DATUM</th>
+    <th style="width:16mm">ZAČÁTEK</th>
+    <th style="width:16mm">KONEC</th>
+    <th style="width:16mm">HODINY</th>
     <th>PORADENSKÁ ČINNOST</th>
-    <th style="text-align:right">ODPRACOVANÉ HODINY CELKEM</th>
+    <th style="width:30mm; text-align:right">ODPRACOVANÉ HODINY CELKEM</th>
   </tr>
   {% for day in worked_days %}
   <tr>
     <td>{{ day.date }}</td>
-    <td>{{ day.start }}</td>
-    <td>{{ day.end }}</td>
-    <td>{{ day.hours }}</td>
+    <td class="center">{{ day.start }}</td>
+    <td class="center">{{ day.end }}</td>
+    <td class="center">{{ day.hours }}</td>
     <td></td>
-    <td><strong>{{ day.hours }}</strong></td>
+    <td class="bold">{{ day.hours }}</td>
   </tr>
   {% endfor %}
-  <tr class="total-row">
+  <tr class="total">
     <td colspan="5">Celkem za měsíc</td>
-    <td>{{ total_hours }}</td>
+    <td class="center">{{ total_hours }}</td>
   </tr>
 </table>
 
 <!-- Podpis -->
-<table class="footer-table">
+<table class="footer">
   <tr>
-    <td class="sig-cell">
+    <td class="sig">
       <div class="sig-label">PODPIS</div>
       {% if signature_b64 %}
-      <img class="sig-img" src="data:image/png;base64,{{ signature_b64 }}" alt="podpis">
+      <img class="sig" src="data:image/png;base64,{{ signature_b64 }}">
       {% endif %}
     </td>
-    <td class="date-cell">DATUM: {{ last_day }}</td>
+    <td class="date">DATUM: {{ last_day }}</td>
   </tr>
 </table>
 

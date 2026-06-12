@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
+from xhtml2pdf import pisa
 
 MESICE = {
     1: "Leden", 2: "Únor", 3: "Březen", 4: "Duben",
@@ -77,7 +77,12 @@ def generate(year: int, month: int, output_dir: Path = Path("output")) -> Path:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / f"vykaz_{year}_{month:02d}.pdf"
-    HTML(string=html_str, base_url=".").write_pdf(str(out_path))
+
+    with open(out_path, "wb") as f:
+        result = pisa.CreatePDF(html_str, dest=f, encoding="utf-8")
+    if result.err:
+        sys.exit(f"Chyba při generování PDF: {result.err}")
+
     print(f"PDF vygenerováno: {out_path}")
     return out_path
 
