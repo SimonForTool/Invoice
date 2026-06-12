@@ -100,14 +100,14 @@ table.dt th { background:var(--blue); color:#fff; padding:5px 7px;
               text-align:left; font-size:11px; white-space:nowrap; }
 table.dt td { padding:3px 6px; border-bottom:1px solid #eee; vertical-align:middle; }
 /* Pevné šířky sloupců, poslední zabere zbytek */
-table.dt th:nth-child(1), table.dt td:nth-child(1) { width:95px; }   /* Datum */
-table.dt th:nth-child(2), table.dt td:nth-child(2) { width:75px; }   /* Den */
-table.dt th:nth-child(3), table.dt td:nth-child(3) { width:90px; }   /* Typ */
+table.dt th:nth-child(1), table.dt td:nth-child(1) { width:100px; }  /* Datum */
+table.dt th:nth-child(2), table.dt td:nth-child(2) { width:80px; }   /* Den */
+table.dt th:nth-child(3), table.dt td:nth-child(3) { width:100px; }  /* Typ */
 table.dt th:nth-child(4), table.dt td:nth-child(4) { width:80px; }   /* Začátek */
 table.dt th:nth-child(5), table.dt td:nth-child(5) { width:80px; }   /* Konec */
-table.dt th:nth-child(6), table.dt td:nth-child(6) { width:60px; text-align:center; } /* Hodin */
-table.dt th:nth-child(7) { width:auto; text-align:right; padding-right:12px; }
-table.dt td:nth-child(7) { width:auto; text-align:center; font-weight:bold; }
+table.dt th:nth-child(6), table.dt td:nth-child(6) { width:65px; text-align:center; } /* Hodin */
+table.dt th:nth-child(7) { text-align:center; }   /* Odprac. hodiny celkem — header */
+table.dt td:nth-child(7) { text-align:center; font-weight:bold; }    /* hodnoty */
 table.dt tr.tw td { background:#fff; }
 table.dt tr.tv td { background:var(--yel); }
 table.dt tr.ts td { background:var(--red); }
@@ -442,12 +442,12 @@ function buildMonthPanel(m) {
       <div class="card-b" style="padding:0">
         <table class="dt" id="dt${m}">
           <thead><tr>
-            <th style="width:90px">Datum</th>
-            <th style="width:70px">Den</th>
-            <th style="width:120px" class="no-print">Typ</th>
-            <th style="width:75px">Začátek</th>
-            <th style="width:75px">Konec</th>
-            <th style="width:52px;text-align:center">Hodin</th>
+            <th>Datum</th>
+            <th>Den</th>
+            <th class="no-print">Typ</th>
+            <th>Začátek</th>
+            <th>Konec</th>
+            <th style="text-align:center">Hodin</th>
             <th style="text-align:right;padding-right:12px">Odpracované hodiny celkem</th>
           </tr></thead>
           <tbody id="tb${m}"></tbody>
