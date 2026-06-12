@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "DejaVu Sans", Arial, sans-serif;
+    font-size: 9pt;
+    color: #111;
+  }
+
+  /* ── Hlavička ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10mm;
+  }
+  .header-left {
+    font-size: 9pt;
+    line-height: 1.6;
+  }
+  .header-left strong {
+    font-size: 10pt;
+  }
+  .header-right {
+    text-align: right;
+  }
+  .title {
+    font-size: 28pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .subtitle {
+    font-size: 9pt;
+    color: #555;
+    margin-top: 2px;
+  }
+
+  /* ── Tabulka dodavatel ── */
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 5mm;
+  }
+  .info-table td {
+    border: 0.5pt solid #aaa;
+    padding: 3px 6px;
+    vertical-align: middle;
+  }
+  .info-table td:first-child {
+    font-weight: bold;
+    width: 25mm;
+    background: #f5f5f5;
+  }
+
+  /* ── Sazba/součet ── */
+  .rate-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 3mm;
+  }
+  .rate-table th {
+    border: 0.5pt solid #aaa;
+    padding: 3px 6px;
+    background: #e8e8e8;
+    font-weight: bold;
+    font-size: 8.5pt;
+  }
+  .rate-table td {
+    border: 0.5pt solid #aaa;
+    padding: 3px 6px;
+  }
+
+  /* ── Popis práce ── */
+  .desc-box {
+    border: 0.5pt solid #aaa;
+    padding: 3px 8px;
+    margin-bottom: 5mm;
+    font-size: 8.5pt;
+    line-height: 1.7;
+  }
+  .desc-box ul {
+    margin-left: 12px;
+  }
+
+  /* ── Výkaz dní ── */
+  .days-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 5mm;
+  }
+  .days-table th {
+    border-bottom: 1pt solid #aaa;
+    padding: 2px 4px;
+    font-size: 7.5pt;
+    font-weight: bold;
+    text-align: left;
+  }
+  .days-table th:last-child,
+  .days-table th:nth-child(4) {
+    text-align: center;
+  }
+  .days-table td {
+    border: 0.3pt solid #ddd;
+    padding: 2px 4px;
+    font-size: 8pt;
+    vertical-align: middle;
+  }
+  .days-table td:nth-child(2),
+  .days-table td:nth-child(3),
+  .days-table td:nth-child(4) {
+    text-align: center;
+  }
+  .days-table td:last-child {
+    text-align: center;
+    font-weight: bold;
+  }
+  .days-table tr.total-row td {
+    border-top: 1pt solid #aaa;
+    border-bottom: none;
+    font-weight: bold;
+    font-size: 8.5pt;
+    padding: 3px 4px;
+  }
+
+  /* ── Patička ── */
+  .footer-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 5mm;
+  }
+  .footer-table td {
+    border: 0.5pt solid #aaa;
+    padding: 4px 8px;
+    vertical-align: top;
+    height: 22mm;
+  }
+  .footer-table td.sig-cell {
+    width: 60%;
+  }
+  .footer-table td.date-cell {
+    width: 40%;
+    font-weight: bold;
+    vertical-align: middle;
+    font-size: 9pt;
+  }
+  .sig-label {
+    font-size: 8pt;
+    font-weight: bold;
+    margin-bottom: 2mm;
+  }
+  .sig-img {
+    max-height: 18mm;
+    max-width: 70mm;
+  }
+</style>
+</head>
+<body>
+
+<!-- Hlavička -->
+<div class="header">
+  <div class="header-left">
+    <strong>FORTOOL-TECHNOLOGIES, S.R.O.</strong><br><br>
+    Dukelská 626/88<br>
+    293 01 Mladá Boleslav<br>
+    IČ: 06037976
+  </div>
+  <div class="header-right">
+    <div class="title">VÝKAZ PRÁCE</div>
+    <div class="subtitle">MĚSÍC: {{ month_name|upper }} {{ year }}</div>
+  </div>
+</div>
+
+<!-- Dodavatel -->
+<table class="info-table">
+  <tr><td>FIRMA:</td><td>ŠIMON JELEŇÁK</td></tr>
+  <tr><td>IČ:</td><td>43758207</td></tr>
+  <tr><td>ADRESA:</td><td>ZDĚTÍN 151, 294 71 BENÁTKY NAD JIZEROU</td></tr>
+</table>
+
+<!-- Sazba -->
+<table class="rate-table">
+  <tr>
+    <th>JMÉNO</th>
+    <th>SAZBA</th>
+    <th>HODIN CELKEM</th>
+    <th>CELKEM</th>
+  </tr>
+  <tr>
+    <td>ŠIMON JELEŇÁK</td>
+    <td>{{ rate }} KČ</td>
+    <td>{{ total_hours }}</td>
+    <td>{{ "{:,}".format(total_hours * rate).replace(",", " ") }} KČ</td>
+  </tr>
+</table>
+
+<!-- Popis práce -->
+<div class="desc-box">
+  Poradenská činnost k obchodním službám:
+  <ul>
+    <li>zpracování obchodních poptávek</li>
+    <li>příprava podkladů a vedení technických jednání v rámci těchto poptávek</li>
+    <li>získávání potřebných informací pro poptávky a komunikace s interními odděleními zákazníka.</li>
+    <li>kalkulace a návrh cenových sazeb</li>
+    <li>tvorba konkrétních nabídek na základě technických jednání</li>
+    <li>tvorba předávacích protokolů a další práce s nimi</li>
+  </ul>
+</div>
+
+<!-- Výkaz dní -->
+<table class="days-table">
+  <tr>
+    <th>DATUM</th>
+    <th>ZAČÁTEK</th>
+    <th>KONEC</th>
+    <th>HODINY</th>
+    <th>PORADENSKÁ ČINNOST</th>
+    <th style="text-align:right">ODPRACOVANÉ HODINY CELKEM</th>
+  </tr>
+  {% for day in worked_days %}
+  <tr>
+    <td>{{ day.date }}</td>
+    <td>{{ day.start }}</td>
+    <td>{{ day.end }}</td>
+    <td>{{ day.hours }}</td>
+    <td></td>
+    <td><strong>{{ day.hours }}</strong></td>
+  </tr>
+  {% endfor %}
+  <tr class="total-row">
+    <td colspan="5">Celkem za měsíc</td>
+    <td>{{ total_hours }}</td>
+  </tr>
+</table>
+
+<!-- Podpis -->
+<table class="footer-table">
+  <tr>
+    <td class="sig-cell">
+      <div class="sig-label">PODPIS</div>
+      {% if signature_b64 %}
+      <img class="sig-img" src="data:image/png;base64,{{ signature_b64 }}" alt="podpis">
+      {% endif %}
+    </td>
+    <td class="date-cell">DATUM: {{ last_day }}</td>
+  </tr>
+</table>
+
+</body>
+</html>
