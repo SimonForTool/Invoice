@@ -867,7 +867,7 @@ async function getToken() {
     client_id:     GRAPH_CONFIG.clientId,
     response_type: "token",
     redirect_uri:  "http://localhost",
-    scope:         "https://graph.microsoft.com/Calendars.Read",
+    scope:         "https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/User.Read",
     response_mode: "fragment",
     nonce:         Math.random().toString(36).slice(2),
     prompt:        "consent",
@@ -982,15 +982,28 @@ async function loadFromOutlook() {
       + `&$select=subject,start,end`
       + `&$top=200`;
 
+    // Debug: decode token audience
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
+      console.log("Token aud:", payload.aud, "| scp:", payload.scp, "| upn:", payload.upn);
+    } catch(e) {}
+
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!resp.ok) {
       const errBody = await resp.json().catch(() => ({}));
       const msg = errBody?.error?.message || resp.statusText;
+      const code = errBody?.error?.code || "";
       if (resp.status === 401) {
         sessionStorage.removeItem("graph_token");
-        throw new Error(`Graph API 401: ${msg}\n\nZkuste se odhlásit a znovu přihlásit. Pokud problém přetrvá, ověřte v Azure → API permissions že jsou udělena oprávnění Calendars.Read.`);
+        // Decode token for user-visible info
+        let tokenInfo = "";
+        try {
+          const p = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
+          tokenInfo = `\nToken aud: ${p.aud}\nToken scp: ${p.scp || "(chybí)"}`;
+        } catch(e) {}
+        throw new Error(`Graph API 401 (${code}): ${msg}${tokenInfo}`);
       }
-      throw new Error(`Graph API ${resp.status}: ${msg}`);
+      throw new Error(`Graph API ${resp.status} (${code}): ${msg}`);
     }
     const data = await resp.json();
     const events = data.value || [];
