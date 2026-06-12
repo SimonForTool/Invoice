@@ -6,7 +6,7 @@
 <title>Výkaz práce 2026 – Šimon Jeleňák</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script src="https://unpkg.com/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
 <style>
 /* ══ ZÁKLADNÍ STYL ══════════════════════════════════════════════════════════ */
 :root {
@@ -845,21 +845,33 @@ const MSAL_CONFIG = {
 };
 
 let _msalApp = null;
-function getMsal() {
+
+async function getMsal() {
   if (_msalApp) return _msalApp;
-  _msalApp = new msal.PublicClientApplication({
+
+  // Podpora MSAL v2 (msal.PublicClientApplication) i v3 (@azure/msal-browser)
+  const PCA = window.msal?.PublicClientApplication
+           || window.msalBrowser?.PublicClientApplication;
+
+  if (!PCA) throw new Error("MSAL knihovna se nenačetla. Zkontrolujte připojení k internetu a povolte CDN v prohlížeči.");
+
+  const config = {
     auth: {
       clientId: MSAL_CONFIG.clientId,
       authority: `https://login.microsoftonline.com/${MSAL_CONFIG.tenantId}`,
       redirectUri: "http://localhost",
     },
     cache: { cacheLocation: "localStorage" },
-  });
+  };
+
+  _msalApp = new PCA(config);
+  // MSAL v3 vyžaduje initialize()
+  if (typeof _msalApp.initialize === "function") await _msalApp.initialize();
   return _msalApp;
 }
 
 async function getToken() {
-  const app = getMsal();
+  const app    = await getMsal();
   const scopes = ["Calendars.Read"];
   const accounts = app.getAllAccounts();
   if (accounts.length > 0) {
@@ -874,10 +886,12 @@ async function getToken() {
 
 async function loadFromOutlook() {
   const btn = document.getElementById("btnGraph");
-  btn.textContent = "⏳ Přihlašuji…";
+  btn.textContent = "⏳ Připojuji…";
   btn.disabled = true;
 
   try {
+    await getMsal(); // inicializace
+    btn.textContent = "⏳ Přihlašuji…";
     const token = await getToken();
     btn.textContent = "⏳ Načítám…";
 
