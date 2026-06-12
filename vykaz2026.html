@@ -873,7 +873,7 @@ async function getToken() {
     prompt:        "consent",
   });
 
-  const authUrl = `https://login.microsoftonline.com/${GRAPH_CONFIG.tenantId}/oauth2/v2.0/authorize?${params}`;
+  const authUrl = `https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?${params}`;
   const popup   = window.open(authUrl, "graph_auth", "width=520,height=640,left=200,top=100");
 
   if (!popup) throw new Error("Prohlížeč zablokoval popup okno. Povolte popupy pro tento soubor.");
