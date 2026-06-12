@@ -1001,7 +1001,12 @@ async function loadFromOutlook() {
       const d = await r.json();
       events = events.concat(d.value || []);
     }
-    console.log(`Graf: načteno ${events.length} událostí celkem. Subjekty:`, events.map(e => e.subject));
+    console.log(`Graf: načteno ${events.length} událostí celkem.`);
+    const juneEvents = events.filter(e => {
+      const s = e.start.dateTime || e.start.date || "";
+      return s.startsWith("2026-06");
+    });
+    console.log("Události v červnu 2026:", juneEvents.map(e => `${(e.start.dateTime||e.start.date||"").slice(0,10)}: ${e.subject}`));
 
     // Převedeme Graph události do stejného formátu jako ICS parser
     // dateTime z Graph je v lokálním čase daného timezone, ne UTC — nepřidáváme Z
