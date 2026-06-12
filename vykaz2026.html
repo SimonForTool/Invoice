@@ -1089,13 +1089,23 @@ async function loadFromGoogle() {
   try {
     localStorage.setItem(STORAGE_KEY, entered);
 
-    // Na HTTPS (GitHub Pages) použijeme CORS proxy — funguje automaticky
+    // Na HTTPS zkusíme: 1) přímý fetch, 2) různé proxy
     if (location.protocol === "https:") {
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(entered)}`;
-      const resp = await fetch(proxyUrl);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const text = await resp.text();
-      if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Neplatný ICS formát.");
+      const attempts = [
+        () => fetch(entered),
+        () => fetch(`https://corsproxy.io/?${encodeURIComponent(entered)}`),
+        () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(entered)}`),
+        () => fetch(`https://cors.sh/${entered}`, { headers: { "x-cors-api-key": "temp_demo" } }),
+      ];
+      let text = null;
+      for (const attempt of attempts) {
+        try {
+          const r = await attempt();
+          if (r.ok) { text = await r.text(); break; }
+        } catch(e) { /* zkusíme další */ }
+      }
+      if (!text) throw new Error("Nepodařilo se načíst kalendář. Zkontrolujte URL nebo síťové připojení.");
+      if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Neplatný ICS formát — zkontrolujte URL.");
       const events = parseIcs(text);
       applyAndRender(events);
       return;
