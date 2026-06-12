@@ -108,6 +108,7 @@ select.tp { padding:2px 4px; border:1px solid var(--brd); border-radius:4px;
 input.ti  { width:56px; padding:2px 4px; border:1px solid var(--brd);
             border-radius:4px; font-size:11px; font-family:monospace; text-align:center; }
 input.ti:disabled { opacity:.35; }
+.pt { display:none; font-size:12px; font-family:monospace; }
 .hc { font-weight:700; text-align:center; min-width:36px; }
 
 tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
@@ -145,7 +146,8 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
                       -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   table.dt tr.th td { background:#fff0e0 !important;
                       -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  select.tp, input.ti { border:none; background:transparent; }
+  select.tp, input.ti { display:none !important; }
+  .pt { display:inline !important; }
   .hc { font-weight:700; }
 
   @page { size:A4; margin:15mm; }
@@ -454,9 +456,9 @@ function renderMonth(m) {
         <select class="tp" onchange="chType(${m},${i},this.value)">${typOpts}</select>
       </td>
       <td><input class="ti" type="time" value="${d.start||""}" ${dis}
-           onchange="chTime(${m},${i},'start',this.value)"></td>
+           onchange="chTime(${m},${i},'start',this.value)"><span class="pt">${d.start||""}</span></td>
       <td><input class="ti" type="time" value="${d.end||""}" ${dis}
-           onchange="chTime(${m},${i},'end',this.value)"></td>
+           onchange="chTime(${m},${i},'end',this.value)"><span class="pt">${d.end||""}</span></td>
       <td class="hc" id="hc_${m}_${i}">${h||( d.type==="holiday"?"–":"")}</td>
       <td class="no-print"></td>
       <td class="hc">${d.type==="work"?"<b>"+h+"</b>":""}</td>`;
