@@ -95,10 +95,18 @@ main { padding:18px 20px; }
 .li  { display:flex; align-items:center; gap:4px; }
 .ld  { width:12px; height:12px; border-radius:3px; border:1px solid #ccc; }
 
-table.dt { width:100%; border-collapse:collapse; font-size:12px; }
+table.dt { width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
 table.dt th { background:var(--blue); color:#fff; padding:5px 7px;
               text-align:left; font-size:11px; white-space:nowrap; }
 table.dt td { padding:3px 6px; border-bottom:1px solid #eee; vertical-align:middle; }
+/* Pevné šířky sloupců, poslední zabere zbytek */
+table.dt th:nth-child(1), table.dt td:nth-child(1) { width:95px; }   /* Datum */
+table.dt th:nth-child(2), table.dt td:nth-child(2) { width:75px; }   /* Den */
+table.dt th:nth-child(3), table.dt td:nth-child(3) { width:90px; }   /* Typ */
+table.dt th:nth-child(4), table.dt td:nth-child(4) { width:80px; }   /* Začátek */
+table.dt th:nth-child(5), table.dt td:nth-child(5) { width:80px; }   /* Konec */
+table.dt th:nth-child(6), table.dt td:nth-child(6) { width:60px; text-align:center; } /* Hodin */
+table.dt th:last-child,   table.dt td:last-child   { width:auto; text-align:right; padding-right:12px; } /* Odprac. */
 table.dt tr.tw td { background:#fff; }
 table.dt tr.tv td { background:var(--yel); }
 table.dt tr.ts td { background:var(--red); }
@@ -161,13 +169,14 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
   /* ── Tabulka hodin ── */
   table.dt { font-size:7.5pt; width:100% !important; table-layout:fixed; }
   table.dt th, table.dt td { padding:1.5px 4px !important; }
-  /* Datum, Den, Začátek, Konec, Hodin — pevné šířky; poslední sloupec zbytek */
+  /* Datum, Den, Typ(skryt), Začátek, Konec, Hodin — pevné; poslední zbytek */
   table.dt th:nth-child(1), table.dt td:nth-child(1) { width:20mm; }
-  table.dt th:nth-child(2), table.dt td:nth-child(2) { width:18mm; }
+  table.dt th:nth-child(2), table.dt td:nth-child(2) { width:16mm; }
   table.dt th:nth-child(3), table.dt td:nth-child(3) { width:14mm; }
   table.dt th:nth-child(4), table.dt td:nth-child(4) { width:14mm; }
   table.dt th:nth-child(5), table.dt td:nth-child(5) { width:12mm; }
-  table.dt th:last-child,   table.dt td:last-child   { width:auto; text-align:right; }
+  table.dt th:nth-child(6), table.dt td:nth-child(6) { width:12mm; }
+  table.dt th:last-child,   table.dt td:last-child   { width:auto; text-align:right; padding-right:4px; }
 
   select.tp, input.ti { display:none !important; }
   .pt { display:inline !important; }
@@ -437,7 +446,7 @@ function buildMonthPanel(m) {
             <th style="width:75px">Začátek</th>
             <th style="width:75px">Konec</th>
             <th style="width:52px;text-align:center">Hodin</th>
-            <th class="no-print" style="width:55px">Poradenská činnost</th>
+            <th>Poradenská činnost</th>
             <th style="text-align:right">Odpracované hodiny celkem</th>
           </tr></thead>
           <tbody id="tb${m}"></tbody>
@@ -493,16 +502,14 @@ function renderMonth(m) {
            onchange="chTime(${m},${i},'start',this.value)"><span class="pt">${d.start||""}</span></td>
       <td><input class="ti" type="time" value="${d.end||""}" ${dis}
            onchange="chTime(${m},${i},'end',this.value)"><span class="pt">${d.end||""}</span></td>
-      <td class="hc" id="hc_${m}_${i}">${h||( d.type==="holiday"?"–":"")}</td>
-      <td class="no-print"></td>
-      <td class="hc">${d.type==="work"?"<b>"+h+"</b>":""}</td>`;
+      <td class="hc" id="hc_${m}_${i}">${h||(d.type==="holiday"?"–":"")}</td>
+      <td class="hc" style="text-align:right;padding-right:12px">${d.type==="work"?"<b>"+h+"</b>":""}</td>`;
     tbody.appendChild(tr);
   }
 
   tfoot.innerHTML = `<tr>
-    <td colspan="7" style="text-align:right;padding-right:10px" class="no-print">Celkem za měsíc:</td>
-    <td colspan="8" style="text-align:right;padding-right:10px" class="print-only-cell">Celkem za měsíc:</td>
-    <td style="text-align:center;font-size:14px">${total}</td>
+    <td colspan="6" style="text-align:right;padding-right:12px">Celkem za měsíc:</td>
+    <td style="text-align:right;padding-right:12px;font-size:14px">${total}</td>
   </tr>`;
 
   // aktualizuj print-hlavičku
