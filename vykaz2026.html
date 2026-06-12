@@ -974,11 +974,9 @@ async function loadFromOutlook() {
     const token = await getToken();
     btn.textContent = "⏳ Načítám…";
 
-    // Načteme celý rok 2026
-    const start = "2026-01-01T00:00:00Z";
-    const end   = "2026-12-31T23:59:59Z";
-    const url   = `https://graph.microsoft.com/v1.0/me/calendarView`
-      + `?startDateTime=${start}&endDateTime=${end}`
+    // Načteme události za rok 2026
+    const url = `https://graph.microsoft.com/v1.0/me/events`
+      + `?$filter=start/dateTime ge '2026-01-01T00:00:00Z' and end/dateTime le '2026-12-31T23:59:59Z'`
       + `&$select=subject,start,end`
       + `&$top=200`;
 
