@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Výkaz práce 2026 – Šimon Jeleňák</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ══ ZÁKLADNÍ STYL ══════════════════════════════════════════════════════════ */
 :root {
@@ -191,7 +193,10 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
            onchange="changeRate(this.value)">
     <span style="color:rgba(255,255,255,.7)">Kč/hod</span>
   </label>
-  <button class="btn btn-pdf no-print" onclick="printPdf()">🖨 Tisk / PDF</button>
+  <button class="btn btn-pdf no-print" onclick="printPdf()">🖨 Tisk</button>
+  <button class="btn no-print" id="btnExport"
+          style="background:#c0392b;color:#fff"
+          onclick="exportPdf()">📥 Export PDF</button>
   <button class="btn no-print" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
           onclick="if(confirm('Resetovat všechna data na výchozí hodnoty?')){localStorage.removeItem(\'vykaz2026\');location.reload();}">↺ Reset dat</button>
 </header>
@@ -549,14 +554,86 @@ function chTime(m, i, fld, val) {
 }
 
 // ══ TISK PDF ══════════════════════════════════════════════════════════════════
-function printPdf() {
-  // Zjistíme aktivní měsíc
+function activeMonth() {
   const active = document.querySelector(".panel.on");
-  if (!active || active.id==="panel-overview") {
-    showToast("Přejděte nejprve na konkrétní měsíc, poté klikněte Tisk / PDF.", true);
-    return;
-  }
+  if (!active || active.id==="panel-overview") return null;
+  return parseInt(active.id.replace("panel-m",""));
+}
+
+function pdfFilename(m) {
+  const mm = String(m).padStart(2,"0");
+  return `S.Jelenak_vykaz prace ${mm}_2026.pdf`;
+}
+
+function printPdf() {
+  const m = activeMonth();
+  if (!m) { showToast("Přejděte nejprve na konkrétní měsíc.", true); return; }
+  const old = document.title;
+  document.title = pdfFilename(m).replace(".pdf","");
   window.print();
+  setTimeout(() => document.title = old, 1000);
+}
+
+async function exportPdf() {
+  const m = activeMonth();
+  if (!m) { showToast("Přejděte nejprve na konkrétní měsíc.", true); return; }
+
+  const btn = document.getElementById("btnExport");
+  btn.textContent = "⏳ Generuji…";
+  btn.disabled = true;
+
+  try {
+    // Sestavíme tiskovou verzi obsahu do dočasného divu
+    const panel = document.getElementById("panel-m"+m);
+
+    // Dočasně zobrazíme tiskové elementy a skryjeme no-print
+    document.querySelectorAll(".no-print").forEach(el => el.dataset._vis = el.style.display || "");
+    document.querySelectorAll(".no-print").forEach(el => el.style.display = "none");
+    document.querySelectorAll(".print-header").forEach(el => el.style.display = "block");
+
+    const canvas = await html2canvas(panel, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      windowWidth: 794,   // A4 @ 96dpi
+    });
+
+    // Obnovíme viditelnost
+    document.querySelectorAll(".no-print").forEach(el => {
+      el.style.display = el.dataset._vis || "";
+      delete el.dataset._vis;
+    });
+    document.querySelectorAll(".print-header").forEach(el => el.style.display = "");
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const imgW = pageW - margin*2;
+    const imgH = (canvas.height * imgW) / canvas.width;
+
+    const img = canvas.toDataURL("image/jpeg", 0.92);
+
+    // Pokud obsah přesahuje stránku, rozdělíme na více stránek
+    let yOffset = 0;
+    while (yOffset < imgH) {
+      if (yOffset > 0) pdf.addPage();
+      pdf.addImage(img, "JPEG", margin, margin - (yOffset * pageW / imgW),
+                   imgW, imgH);
+      yOffset += pageH - margin*2;
+    }
+
+    pdf.save(pdfFilename(m));
+    showToast(`✓ Staženo: ${pdfFilename(m)}`);
+  } catch(e) {
+    showToast("Chyba exportu: "+e.message, true);
+    console.error(e);
+  } finally {
+    btn.textContent = "📥 Export PDF";
+    btn.disabled = false;
+  }
 }
 
 // ══ UI ════════════════════════════════════════════════════════════════════════
