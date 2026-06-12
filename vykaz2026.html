@@ -634,19 +634,38 @@ async function exportPdf() {
     // Sestavíme tiskovou verzi obsahu do dočasného divu
     const panel = document.getElementById("panel-m"+m);
 
-    // Dočasně zobrazíme tiskové elementy a skryjeme no-print
+    // Dočasně aplikujeme tiskový styl
     document.querySelectorAll(".no-print").forEach(el => el.dataset._vis = el.style.display || "");
     document.querySelectorAll(".no-print").forEach(el => el.style.display = "none");
     document.querySelectorAll(".print-header").forEach(el => el.style.display = "block");
+
+    // Aplikujeme tiskové CSS na tabulku (html2canvas nečte @media print)
+    const tbl = panel.querySelector("table.dt");
+    const allCells = panel.querySelectorAll("table.dt th, table.dt td");
+    const savedStyles = [];
+    allCells.forEach(cell => {
+      savedStyles.push({ el: cell, color: cell.style.color, bg: cell.style.background });
+      cell.style.color = "#000";
+      cell.style.background = cell.closest("tr.tv") ? "#f0f0f0"
+                            : cell.closest("tr.ts") ? "#f0f0f0"
+                            : cell.closest("tr.th") ? "#f0f0f0"
+                            : cell.tagName === "TH"  ? "#e0e0e0"
+                            : "#ffffff";
+    });
+    // Tabulka na plnou šířku jako při tisku
+    const savedTblStyle = tbl ? { width: tbl.style.width, layout: tbl.style.tableLayout } : null;
+    if (tbl) { tbl.style.width = "100%"; tbl.style.tableLayout = "fixed"; }
 
     const canvas = await html2canvas(panel, {
       scale: 2,
       useCORS: true,
       backgroundColor: "#ffffff",
-      windowWidth: 794,   // A4 @ 96dpi
+      windowWidth: 794,
     });
 
-    // Obnovíme viditelnost
+    // Obnovíme styly
+    savedStyles.forEach(s => { s.el.style.color = s.color; s.el.style.background = s.bg; });
+    if (tbl && savedTblStyle) { tbl.style.width = savedTblStyle.width; tbl.style.tableLayout = savedTblStyle.layout; }
     document.querySelectorAll(".no-print").forEach(el => {
       el.style.display = el.dataset._vis || "";
       delete el.dataset._vis;
