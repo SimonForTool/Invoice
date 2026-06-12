@@ -1087,11 +1087,22 @@ async function loadFromGoogle() {
   btn.disabled = true;
 
   try {
-    // CORS proxy — Google Calendar ICS neumožňuje přímý přístup z file://
-    const proxy = "https://corsproxy.io/?";
-    const resp = await fetch(proxy + encodeURIComponent(entered));
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    const text = await resp.text();
+    // Zkusíme více CORS proxy jako zálohu
+    const proxies = [
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      url => `https://thingproxy.freeboard.io/fetch/${url}`,
+    ];
+    let text = null;
+    let lastErr = null;
+    for (const makeUrl of proxies) {
+      try {
+        const r = await fetch(makeUrl(entered));
+        if (r.ok) { text = await r.text(); break; }
+        lastErr = `HTTP ${r.status}`;
+      } catch(e) { lastErr = e.message; }
+    }
+    if (!text) throw new Error(`Všechny proxy selhaly (${lastErr}). Zkuste importovat .ics soubor ručně.`);
     if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Odpověď neobsahuje platný ICS kalendář. Zkontrolujte URL.");
 
     // Uložíme URL pro příště
