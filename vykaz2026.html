@@ -148,16 +148,27 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
     transform: scale(1);
   }
 
-  table.dt { font-size:7.5pt; }
-  table.dt th { background:#f0f0f0 !important; color:#000 !important;
-                -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  table.dt td { padding: 1.5px 4px !important; }
-  table.dt tr.tv td { background:#fff8dc !important;
-                      -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  table.dt tr.ts td { background:#fde8e8 !important;
-                      -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  table.dt tr.th td { background:#fff0e0 !important;
-                      -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  /* ── Černobílé ── */
+  * { color:#000 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  table.dt th    { background:#e0e0e0 !important; }
+  table.dt tr.tv td,
+  table.dt tr.ts td,
+  table.dt tr.th td { background:#f0f0f0 !important; }
+  .ph-info td.lb,
+  .ph-rate th    { background:#e0e0e0 !important; }
+  .ph-title      { color:#000 !important; }
+
+  /* ── Tabulka hodin ── */
+  table.dt { font-size:7.5pt; width:100% !important; table-layout:fixed; }
+  table.dt th, table.dt td { padding:1.5px 4px !important; }
+  /* Datum, Den, Začátek, Konec, Hodin — pevné šířky; poslední sloupec zbytek */
+  table.dt th:nth-child(1), table.dt td:nth-child(1) { width:20mm; }
+  table.dt th:nth-child(2), table.dt td:nth-child(2) { width:18mm; }
+  table.dt th:nth-child(3), table.dt td:nth-child(3) { width:14mm; }
+  table.dt th:nth-child(4), table.dt td:nth-child(4) { width:14mm; }
+  table.dt th:nth-child(5), table.dt td:nth-child(5) { width:12mm; }
+  table.dt th:last-child,   table.dt td:last-child   { width:auto; text-align:right; }
+
   select.tp, input.ti { display:none !important; }
   .pt { display:inline !important; }
   .hc { font-weight:700; }
