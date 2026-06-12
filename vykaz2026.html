@@ -6,6 +6,7 @@
 <title>Výkaz práce 2026 – Šimon Jeleňák</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
 /* ══ ZÁKLADNÍ STYL ══════════════════════════════════════════════════════════ */
 :root {
@@ -231,9 +232,12 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
           onclick="exportPdf()">📥 Export PDF</button>
   <button class="btn no-print" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
           onclick="if(confirm('Resetovat všechna data na výchozí hodnoty?')){localStorage.removeItem(\'vykaz2026\');location.reload();}">↺ Reset dat</button>
-  <button class="btn no-print" id="btnOutlook"
+  <button class="btn no-print" id="btnGraph"
           style="background:#0078d4;color:#fff"
-          onclick="document.getElementById('icsInput').click()">📅 Načíst z Outlooku (.ics)</button>
+          onclick="loadFromOutlook()">📅 Načíst z Outlooku</button>
+  <button class="btn no-print" id="btnIcs"
+          style="background:#005a9e;color:#fff"
+          onclick="document.getElementById('icsInput').click()" title="Záloha: export .ics z Outlooku">📎 .ics</button>
   <input type="file" id="icsInput" accept=".ics" style="display:none" onchange="loadIcs(this)">
 </header>
 
@@ -833,6 +837,87 @@ for (let m=1; m<=12; m++) renderMonth(m);
 renderOverview();
 document.getElementById("rateInput").value = DATA.rate || 400;
 
+// ══ MICROSOFT GRAPH API — živé načtení z Outlooku ════════════════════════════
+
+const MSAL_CONFIG = {
+  clientId: "199ae62a-6c61-46b9-a408-7f63c07a54b3",
+  tenantId: "36f1608d-afa3-455a-987e-c18d58e116d7",
+};
+
+let _msalApp = null;
+function getMsal() {
+  if (_msalApp) return _msalApp;
+  _msalApp = new msal.PublicClientApplication({
+    auth: {
+      clientId: MSAL_CONFIG.clientId,
+      authority: `https://login.microsoftonline.com/${MSAL_CONFIG.tenantId}`,
+      redirectUri: "http://localhost",
+    },
+    cache: { cacheLocation: "localStorage" },
+  });
+  return _msalApp;
+}
+
+async function getToken() {
+  const app = getMsal();
+  const scopes = ["Calendars.Read"];
+  const accounts = app.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const r = await app.acquireTokenSilent({ scopes, account: accounts[0] });
+      return r.accessToken;
+    } catch(e) {}
+  }
+  const r = await app.loginPopup({ scopes, prompt: "select_account" });
+  return r.accessToken;
+}
+
+async function loadFromOutlook() {
+  const btn = document.getElementById("btnGraph");
+  btn.textContent = "⏳ Přihlašuji…";
+  btn.disabled = true;
+
+  try {
+    const token = await getToken();
+    btn.textContent = "⏳ Načítám…";
+
+    // Načteme celý rok 2026
+    const start = "2026-01-01T00:00:00Z";
+    const end   = "2026-12-31T23:59:59Z";
+    const url   = `https://graph.microsoft.com/v1.0/me/calendarView`
+      + `?startDateTime=${start}&endDateTime=${end}`
+      + `&$select=subject,start,end`
+      + `&$top=200`;
+
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!resp.ok) throw new Error(`Graph API: ${resp.status} ${resp.statusText}`);
+    const data = await resp.json();
+    const events = data.value || [];
+
+    // Převedeme Graph události do stejného formátu jako ICS parser
+    const icsLike = events.map(ev => ({
+      subject: ev.subject,
+      dates: (() => {
+        const dates = [];
+        let d = new Date((ev.start.dateTime || ev.start.date + "T00:00:00") + (ev.start.dateTime?.endsWith("Z") ? "" : "Z"));
+        const e = new Date((ev.end.dateTime   || ev.end.date   + "T00:00:00") + (ev.end.dateTime?.endsWith("Z")   ? "" : "Z"));
+        while (d < e) { dates.push(localISO(d)); d.setDate(d.getDate() + 1); }
+        return dates;
+      })(),
+    }));
+
+    // Použijeme stejnou logiku jako ICS import
+    applyAndRender(icsLike);
+
+  } catch(e) {
+    console.error(e);
+    showToast("Chyba: " + e.message, true);
+  } finally {
+    btn.textContent = "📅 Načíst z Outlooku";
+    btn.disabled = false;
+  }
+}
+
 // ══ IMPORT ICS (Outlook kalendář) ═══════════════════════════════════════════
 
 const KW_VACATION = ["dovolená šimon", "dovolena simon", "dovolená", "vacation"];
@@ -915,70 +1000,54 @@ function applyEventsToMonth(events, m) {
   return typeMap;
 }
 
+// Společná logika pro aplikaci událostí (Graph i ICS)
+function applyAndRender(events, source) {
+  const monthsFound = new Set();
+  for (const ev of events) {
+    const type = classifySubject(ev.subject);
+    if (!type) continue;
+    for (const iso of ev.dates) {
+      if (iso.startsWith("2026-")) monthsFound.add(parseInt(iso.slice(5,7)));
+    }
+  }
+
+  if (monthsFound.size === 0) {
+    showToast("Nenalezeny žádné události Dovolená Šimon / Nemoc Šimon pro rok 2026.", true);
+    return;
+  }
+
+  let totalChanged = 0, affectedMonths = [];
+  for (const m of monthsFound) {
+    const typeMap = applyEventsToMonth(events, m);
+    let changed = 0;
+    for (const day of DATA.months[String(m)]?.days || []) {
+      if (day.type === "holiday") continue;
+      const newType = typeMap[day.date];
+      if (newType && day.type !== newType) {
+        day.type = newType; day.start = null; day.end = null; changed++;
+      } else if (!newType && (day.type === "vacation" || day.type === "sick")) {
+        day.type = "work"; day.start = day.start || "12:00"; day.end = day.end || "20:00"; changed++;
+      }
+    }
+    if (changed > 0) { renderMonth(m); affectedMonths.push(`${MESICE[m-1]} (${changed}×)`); totalChanged += changed; }
+  }
+
+  renderOverview();
+  saveData(true);
+  document.querySelector(`[data-p="m${Math.min(...monthsFound)}"]`).click();
+  showToast(`✓ ${source}: ${affectedMonths.join(", ")} — ${totalChanged} změn`);
+}
+
 function loadIcs(input) {
   const file = input.files[0];
   if (!file) return;
-  input.value = ""; // reset pro příští výběr stejného souboru
-
+  input.value = "";
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const events = parseIcs(e.target.result);
-
-      // Zjistíme, které měsíce jsou v ICS obsaženy
-      const monthsFound = new Set();
-      for (const ev of events) {
-        const type = classifySubject(ev.subject);
-        if (!type) continue;
-        for (const iso of ev.dates) {
-          if (iso.startsWith("2026-")) monthsFound.add(parseInt(iso.slice(5,7)));
-        }
-      }
-
-      if (monthsFound.size === 0) {
-        showToast("V souboru nenalezeny žádné události Dovolená Šimon / Nemoc Šimon pro rok 2026.", true);
-        return;
-      }
-
-      let totalChanged = 0;
-      let affectedMonths = [];
-
-      for (const m of monthsFound) {
-        const typeMap = applyEventsToMonth(events, m);
-        let changed = 0;
-
-        for (const day of DATA.months[String(m)]?.days || []) {
-          if (day.type === "holiday") continue;
-          const newType = typeMap[day.date];
-          if (newType && day.type !== newType) {
-            day.type = newType; day.start = null; day.end = null;
-            changed++;
-          } else if (!newType && (day.type === "vacation" || day.type === "sick")) {
-            day.type = "work";
-            day.start = day.start || "12:00";
-            day.end   = day.end   || "20:00";
-            changed++;
-          }
-        }
-
-        if (changed > 0) {
-          renderMonth(m);
-          affectedMonths.push(`${MESICE[m-1]} (${changed}×)`);
-          totalChanged += changed;
-        }
-      }
-
-      renderOverview();
-      saveData(true);
-
-      // Přepneme na první dotčený měsíc
-      const firstM = Math.min(...monthsFound);
-      document.querySelector(`[data-p="m${firstM}"]`).click();
-      showToast(`✓ Načteno z ICS: ${affectedMonths.join(", ")} — celkem ${totalChanged} změn`);
-
+      applyAndRender(parseIcs(e.target.result), "ICS");
     } catch(err) {
-      console.error(err);
-      showToast("Chyba při čtení ICS souboru: " + err.message, true);
+      showToast("Chyba ICS: " + err.message, true);
     }
   };
   reader.readAsText(file, "UTF-8");
