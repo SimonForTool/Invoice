@@ -229,6 +229,23 @@ const HOLIDAYS = {
 };
 
 // Inicializace dat pro rok 2026
+// Náhodný začátek směny (vždy 8 hodin) — bez pravidelného vzoru
+const SHIFTS = [
+  {start:"12:00", end:"20:00"},
+  {start:"12:00", end:"20:00"},  // 12:00 častější (jako ve vzoru)
+  {start:"13:00", end:"21:00"},
+  {start:"13:30", end:"21:30"},
+  {start:"14:00", end:"22:00"},
+];
+// Použijeme deterministické pseudo-náhodné číslo odvozené od data,
+// aby se hodnoty po reload nezměnily (dokud se data neresetují).
+function randShift(seed) {
+  // xorshift32 — jednoduchý hash ze seedu
+  let x = (seed ^ 0xdeadbeef) >>> 0;
+  x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+  return SHIFTS[Math.abs(x) % SHIFTS.length];
+}
+
 // Vrací "YYYY-MM-DD" v lokálním čase (bez UTC posunu)
 function localISO(d) {
   const y = d.getFullYear();
@@ -249,7 +266,9 @@ function initData() {
       if (HOLIDAYS[iso]) {
         months[m].days.push({ date:iso, type:"holiday", name:HOLIDAYS[iso], start:null, end:null });
       } else {
-        months[m].days.push({ date:iso, type:"work", start:"12:00", end:"20:00" });
+        // seed = den v roce, aby byl výsledek stabilní při každém načtení
+        const dayOfYear = Math.floor((d - new Date(2026,0,1)) / 86400000);
+        months[m].days.push({ date:iso, type:"work", ...randShift(dayOfYear) });
       }
     }
     d.setDate(d.getDate()+1);
@@ -501,7 +520,7 @@ function chType(m, i, val) {
   const d = DATA.months[String(m)].days[i];
   d.type = val;
   if (val!=="work") { d.start=null; d.end=null; }
-  else { d.start=d.start||"12:00"; d.end=d.end||"20:00"; }
+  else { const s=randShift(i*31+m); d.start=d.start||s.start; d.end=d.end||s.end; }
   renderMonth(m); renderOverview(); saveData(true);
 }
 function chTime(m, i, fld, val) {
