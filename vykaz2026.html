@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Výkaz práce 2026 – Šimon Jeleňák</title>
+<style>
+/* ══ ZÁKLADNÍ STYL ══════════════════════════════════════════════════════════ */
+:root {
+  --blue:  #1F4E79;
+  --blue2: #2E75B6;
+  --blue3: #deeaf1;
+  --yel:   #fff8dc;
+  --red:   #fde8e8;
+  --ora:   #fff0e0;
+  --gra:   #f4f6f9;
+  --brd:   #d0d5dd;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system,"Segoe UI",Arial,sans-serif; font-size:13px;
+       color:#1a1a2e; background:#eef2f7; }
+
+/* ── Hlavička ── */
+header {
+  background: var(--blue); color:#fff;
+  padding: 0 20px; height: 52px;
+  display: flex; align-items: center; gap: 14px;
+  position: sticky; top: 0; z-index: 200;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+header h1 { font-size:15px; font-weight:700; }
+header .sp { flex:1; }
+.btn { display:inline-flex; align-items:center; gap:5px; padding:6px 13px;
+       border-radius:6px; border:none; cursor:pointer; font-size:12px;
+       font-weight:600; transition:opacity .15s; }
+.btn:hover { opacity:.85; }
+.btn-pdf  { background:#e67e22; color:#fff; }
+.btn-save { background:#27ae60; color:#fff; }
+.saved-lbl { font-size:11px; color:rgba(255,255,255,.65); }
+
+/* ── Záložky ── */
+.tabs { display:flex; gap:2px; padding:10px 20px 0;
+        background:var(--blue); overflow-x:auto; }
+.tab  { padding:6px 12px; border-radius:8px 8px 0 0; cursor:pointer;
+        font-size:11px; font-weight:600; color:rgba(255,255,255,.6);
+        background:rgba(255,255,255,.1); border:none; white-space:nowrap; }
+.tab:hover { background:rgba(255,255,255,.2); color:#fff; }
+.tab.on { background:#eef2f7; color:var(--blue); }
+.bdg { background:var(--blue2); color:#fff; border-radius:10px;
+       padding:1px 6px; font-size:10px; margin-left:3px; }
+.tab.on .bdg { background:var(--blue2); }
+
+/* ── Obsah ── */
+main { padding:18px 20px; }
+.panel { display:none; }
+.panel.on { display:block; }
+
+/* ── Karta ── */
+.card { background:#fff; border-radius:10px;
+        box-shadow:0 1px 5px rgba(0,0,0,.1); overflow:hidden; margin-bottom:18px; }
+.card-h { background:var(--blue); color:#fff; padding:9px 14px;
+          font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; }
+.card-b { padding:14px; }
+
+/* ── Roční přehled ── */
+.yr-stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+.sbox { background:#fff; border:1.5px solid var(--brd); border-radius:8px;
+        padding:10px 16px; text-align:center; min-width:130px; }
+.sbox .v { font-size:20px; font-weight:800; color:var(--blue); }
+.sbox .l { font-size:11px; color:#666; margin-top:2px; }
+
+.yr-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+.mc { border:1.5px solid var(--brd); border-radius:8px; overflow:hidden;
+      cursor:pointer; transition:box-shadow .15s,border-color .15s; }
+.mc:hover { box-shadow:0 3px 10px rgba(0,0,0,.12); border-color:var(--blue2); }
+.mc-h { background:var(--blue2); color:#fff; padding:6px 11px;
+        font-weight:700; font-size:12px; display:flex; justify-content:space-between; }
+.mc-b { padding:7px 11px; font-size:12px; line-height:1.9; }
+.mc-b .r { display:flex; justify-content:space-between; }
+.mc-b .vv { font-weight:700; color:var(--blue); }
+.mc-f { background:var(--gra); padding:4px 11px; font-size:11px; color:#666;
+        display:flex; justify-content:space-between; align-items:center; }
+.pill { display:inline-block; padding:1px 6px; border-radius:10px;
+        font-size:10px; font-weight:600; }
+.pv { background:#fffbcc; color:#856404; }
+.ps { background:#fde8e8; color:#a00; }
+
+/* ── Měsíční tabulka ── */
+.m-bar { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.m-bar h2 { font-size:15px; color:var(--blue); }
+.m-bar .sp { flex:1; }
+.leg { display:flex; gap:8px; font-size:11px; }
+.li  { display:flex; align-items:center; gap:4px; }
+.ld  { width:12px; height:12px; border-radius:3px; border:1px solid #ccc; }
+
+table.dt { width:100%; border-collapse:collapse; font-size:12px; }
+table.dt th { background:var(--blue); color:#fff; padding:5px 7px;
+              text-align:left; font-size:11px; white-space:nowrap; }
+table.dt td { padding:3px 6px; border-bottom:1px solid #eee; vertical-align:middle; }
+table.dt tr.tw td { background:#fff; }
+table.dt tr.tv td { background:var(--yel); }
+table.dt tr.ts td { background:var(--red); }
+table.dt tr.th td { background:var(--ora); color:#888; }
+table.dt tr:hover td { filter:brightness(.97); }
+
+select.tp { padding:2px 4px; border:1px solid var(--brd); border-radius:4px;
+            font-size:11px; background:transparent; cursor:pointer; width:110px; }
+input.ti  { width:56px; padding:2px 4px; border:1px solid var(--brd);
+            border-radius:4px; font-size:11px; font-family:monospace; text-align:center; }
+input.ti:disabled { opacity:.35; }
+.hc { font-weight:700; text-align:center; min-width:36px; }
+
+tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
+           border-top:2px solid var(--blue); background:var(--blue3); color:var(--blue); }
+
+/* ── Toast ── */
+.toast { position:fixed; bottom:18px; right:18px; background:#27ae60; color:#fff;
+         padding:10px 16px; border-radius:8px; font-size:13px; font-weight:600;
+         box-shadow:0 4px 12px rgba(0,0,0,.2); opacity:0; transition:opacity .3s;
+         pointer-events:none; z-index:999; }
+.toast.on { opacity:1; }
+.toast.err { background:#e74c3c; }
+
+/* ══ TISK / PDF ══════════════════════════════════════════════════════════════
+   Při tisku se zobrazí pouze aktivní měsíc ve formátu výkazu práce.         */
+@media print {
+  header, .tabs, .m-bar, .leg, .yr-stats, .yr-grid, .card-h,
+  .panel:not(.on), tfoot, .no-print { display:none !important; }
+
+  body { background:#fff; font-family:Arial,sans-serif; font-size:9pt; color:#111; }
+  main { padding:0; }
+  .panel.on { display:block !important; }
+  .card { box-shadow:none; border-radius:0; }
+  .card-b { padding:0; }
+
+  /* Přidáme hlavičku výkazu pro tisk */
+  .print-header { display:block !important; }
+
+  table.dt { font-size:8pt; }
+  table.dt th { background:#f0f0f0 !important; color:#000 !important;
+                -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  table.dt tr.tv td { background:#fff8dc !important;
+                      -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  table.dt tr.ts td { background:#fde8e8 !important;
+                      -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  table.dt tr.th td { background:#fff0e0 !important;
+                      -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  select.tp, input.ti { border:none; background:transparent; }
+  .hc { font-weight:700; }
+
+  @page { size:A4; margin:15mm; }
+}
+
+/* Hlavička výkazu pro tisk (skryta na obrazovce) */
+.print-header { display:none; }
+.ph-top { display:table; width:100%; margin-bottom:7mm; }
+.ph-left { display:table-cell; width:55%; vertical-align:top;
+           font-size:9pt; line-height:1.7; }
+.ph-right { display:table-cell; text-align:right; vertical-align:top; }
+.ph-title { font-size:26pt; font-weight:bold; line-height:1; }
+.ph-sub   { font-size:9pt; color:#555; margin-top:2px; }
+.ph-info  { width:100%; border-collapse:collapse; margin-bottom:4mm; }
+.ph-info td { border:0.5pt solid #aaa; padding:3px 6px; font-size:9pt; }
+.ph-info td.lb { font-weight:bold; width:25mm; background:#f0f0f0; }
+.ph-rate  { width:100%; border-collapse:collapse; margin-bottom:3mm; }
+.ph-rate th { border:0.5pt solid #aaa; padding:3px 6px; background:#e0e0e0;
+              font-weight:bold; font-size:8.5pt; text-align:left; }
+.ph-rate td { border:0.5pt solid #aaa; padding:3px 6px; font-size:9pt; }
+.ph-desc  { border:0.5pt solid #aaa; padding:3px 8px 4px 8px;
+            margin-bottom:4mm; font-size:8.5pt; line-height:1.6; }
+.ph-desc ul { margin-left:14px; }
+.ph-foot  { width:100%; border-collapse:collapse; margin-top:5mm; }
+.ph-foot td { border:0.5pt solid #aaa; padding:4px 8px; height:22mm; vertical-align:top; }
+.ph-foot td.fc { width:60%; }
+.ph-foot td.fd { width:40%; font-weight:bold; font-size:9pt; vertical-align:middle; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Výkaz práce 2026 — Šimon Jeleňák</h1>
+  <div class="sp"></div>
+  <span class="saved-lbl" id="saveLbl"></span>
+  <button class="btn btn-pdf no-print" onclick="printPdf()">🖨 Tisk / PDF</button>
+</header>
+
+<div class="tabs" id="tabBar">
+  <button class="tab on" data-p="overview" onclick="sw(this,'overview')">📊 Přehled roku</button>
+  <!-- měsíční záložky generuje JS -->
+</div>
+
+<main>
+  <div class="panel on" id="panel-overview">
+    <div class="yr-stats" id="yrStats"></div>
+    <div class="card">
+      <div class="card-h">📅 Přehled měsíců 2026</div>
+      <div class="card-b"><div class="yr-grid" id="yrGrid"></div></div>
+    </div>
+  </div>
+  <!-- měsíční panely generuje JS -->
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ DATA ═════════════════════════════════════════════════════════════════════
+const MESICE = ["Leden","Únor","Březen","Duben","Květen","Červen",
+                "Červenec","Srpen","Září","Říjen","Listopad","Prosinec"];
+const DNYTYDEN = ["Pondělí","Úterý","Středa","Čtvrtek","Pátek","Sobota","Neděle"];
+const RATE = 400;
+
+// České státní svátky 2026
+const HOLIDAYS = {
+  "2026-01-01":"Nový rok",
+  "2026-04-03":"Velký pátek",
+  "2026-04-06":"Velikonoční pondělí",
+  "2026-05-01":"Svátek práce",
+  "2026-05-08":"Den vítězství",
+  "2026-07-05":"Cyril a Metoděj",
+  "2026-07-06":"Jan Hus",
+  "2026-09-28":"Den české státnosti",
+  "2026-10-28":"Den vzniku ČSR",
+  "2026-11-17":"Den boje za svobodu",
+  "2026-12-24":"Štědrý den",
+  "2026-12-25":"1. svátek vánoční",
+  "2026-12-26":"2. svátek vánoční",
+};
+
+// Inicializace dat pro rok 2026
+function initData() {
+  const months = {};
+  let d = new Date("2026-01-01");
+  while (d.getFullYear() === 2026) {
+    const dow = d.getDay(); // 0=Ne,6=So
+    if (dow >= 1 && dow <= 5) { // Po–Pá
+      const iso = d.toISOString().slice(0,10);
+      const m   = String(d.getMonth()+1);
+      if (!months[m]) months[m] = { days: [] };
+      if (HOLIDAYS[iso]) {
+        months[m].days.push({ date:iso, type:"holiday", name:HOLIDAYS[iso], start:null, end:null });
+      } else {
+        months[m].days.push({ date:iso, type:"work", start:"12:00", end:"20:00" });
+      }
+    }
+    d.setDate(d.getDate()+1);
+  }
+  return { year:2026, rate:RATE, months };
+}
+
+function loadData() {
+  const raw = localStorage.getItem("vykaz2026");
+  if (raw) {
+    try { return JSON.parse(raw); } catch(e) {}
+  }
+  return initData();
+}
+
+function saveData(silent=false) {
+  localStorage.setItem("vykaz2026", JSON.stringify(DATA));
+  if (!silent) {
+    document.getElementById("saveLbl").textContent = "✓ Uloženo";
+    setTimeout(() => document.getElementById("saveLbl").textContent="", 2500);
+  }
+}
+
+let DATA = loadData();
+
+// ══ VÝPOČTY ═══════════════════════════════════════════════════════════════════
+function calcH(s, e) {
+  if (!s||!e) return 0;
+  const [sh,sm]=s.split(":").map(Number), [eh,em]=e.split(":").map(Number);
+  return (eh*60+em-sh*60-sm)/60;
+}
+function monthStats(m) {
+  const days = DATA.months[m]?.days || [];
+  let work=0, vac=0, sick=0, hours=0;
+  for (const d of days) {
+    if (d.type==="work")     { work++; hours+=calcH(d.start,d.end); }
+    if (d.type==="vacation") vac++;
+    if (d.type==="sick")     sick++;
+  }
+  return {work,vac,sick,hours};
+}
+function fmtDate(iso) {
+  const [y,m,d]=iso.split("-");
+  return `${d}.${m}.${y}`;
+}
+function lastDay(m) {
+  return new Date(2026, m, 0).getDate(); // den v měsíci
+}
+function lastDayFmt(m) {
+  const d = new Date(2026, m, 0); // posledni den mesice m (1-based)
+  return fmtDate(d.toISOString().slice(0,10));
+}
+
+// ══ SESTAVENÍ UI ══════════════════════════════════════════════════════════════
+function buildTabs() {
+  const bar = document.getElementById("tabBar");
+  for (let m=1; m<=12; m++) {
+    const btn = document.createElement("button");
+    btn.className = "tab";
+    btn.dataset.p = "m"+m;
+    btn.innerHTML = `${MESICE[m-1]}<span class="bdg" id="bdg${m}">–</span>`;
+    btn.onclick = function(){ sw(this,"m"+m); };
+    bar.appendChild(btn);
+  }
+}
+
+function buildMonthPanel(m) {
+  const main = document.querySelector("main");
+  const div  = document.createElement("div");
+  div.className = "panel";
+  div.id = "panel-m"+m;
+
+  div.innerHTML = `
+    <!-- Hlavička pro tisk -->
+    <div class="print-header" id="ph${m}">
+      <div class="ph-top">
+        <div class="ph-left">
+          <b>FORTOOL-TECHNOLOGIES, S.R.O.</b><br><br>
+          Dukelská 626/88<br>293 01 Mladá Boleslav<br>IČ: 06037976
+        </div>
+        <div class="ph-right">
+          <div class="ph-title">VÝKAZ PRÁCE</div>
+          <div class="ph-sub">MĚSÍC: ${MESICE[m-1].toUpperCase()} 2026</div>
+        </div>
+      </div>
+      <table class="ph-info">
+        <tr><td class="lb">FIRMA:</td><td>ŠIMON JELEŇÁK</td></tr>
+        <tr><td class="lb">IČ:</td><td>43758207</td></tr>
+        <tr><td class="lb">ADRESA:</td><td>ZDĚTÍN 151, 294 71 BENÁTKY NAD JIZEROU</td></tr>
+      </table>
+      <table class="ph-rate">
+        <tr><th>JMÉNO</th><th>SAZBA</th><th>HODIN CELKEM</th><th>CELKEM</th></tr>
+        <tr><td>ŠIMON JELEŇÁK</td><td>${RATE} KČ</td>
+            <td id="ph-hours${m}">–</td><td id="ph-total${m}">–</td></tr>
+      </table>
+      <div class="ph-desc">
+        Poradenská činnost k obchodním službám:
+        <ul>
+          <li>zpracování obchodních poptávek</li>
+          <li>příprava podkladů a vedení technických jednání v rámci těchto poptávek</li>
+          <li>získávání potřebných informací pro poptávky a komunikace s interními odděleními zákazníka.</li>
+          <li>kalkulace a návrh cenových sazeb</li>
+          <li>tvorba konkrétních nabídek na základě technických jednání</li>
+          <li>tvorba předávacích protokolů a další práce s nimi</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Toolbar (obrazovka) -->
+    <div class="m-bar no-print">
+      <h2>${MESICE[m-1]} 2026</h2>
+      <div class="sp"></div>
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:#fff"></div>Práce</div>
+        <div class="li"><div class="ld" style="background:var(--yel)"></div>Dovolená</div>
+        <div class="li"><div class="ld" style="background:var(--red)"></div>Nemoc</div>
+        <div class="li"><div class="ld" style="background:var(--ora)"></div>Svátek</div>
+      </div>
+    </div>
+
+    <!-- Tabulka dní -->
+    <div class="card">
+      <div class="card-h no-print" id="mhead${m}">…</div>
+      <div class="card-b" style="padding:0">
+        <table class="dt" id="dt${m}">
+          <thead><tr>
+            <th style="width:90px">Datum</th>
+            <th style="width:70px">Den</th>
+            <th style="width:120px" class="no-print">Typ</th>
+            <th style="width:75px">Začátek</th>
+            <th style="width:75px">Konec</th>
+            <th style="width:52px;text-align:center">Hodin</th>
+            <th class="no-print" style="width:55px">Poradenská činnost</th>
+            <th style="text-align:right">Odpracované hodiny celkem</th>
+          </tr></thead>
+          <tbody id="tb${m}"></tbody>
+          <tfoot id="tf${m}"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Patička pro tisk -->
+    <div class="print-header">
+      <table class="ph-foot">
+        <tr>
+          <td class="fc"><div style="font-size:8pt;font-weight:bold;margin-bottom:2mm">PODPIS</div></td>
+          <td class="fd">DATUM: ${lastDayFmt(m)}</td>
+        </tr>
+      </table>
+    </div>`;
+
+  main.appendChild(div);
+}
+
+function renderMonth(m) {
+  const days  = DATA.months[String(m)]?.days || [];
+  const tbody = document.getElementById("tb"+m);
+  const tfoot = document.getElementById("tf"+m);
+  tbody.innerHTML = "";
+  let total = 0;
+
+  for (let i=0; i<days.length; i++) {
+    const d   = days[i];
+    const dt  = new Date(d.date+"T00:00:00");
+    const dow = DNYTYDEN[dt.getDay()===0?6:dt.getDay()-1];
+    const h   = d.type==="work" ? calcH(d.start,d.end) : 0;
+    total += h;
+
+    const cls = {work:"tw",vacation:"tv",sick:"ts",holiday:"th"}[d.type]||"tw";
+    const dis = d.type!=="work" ? "disabled" : "";
+    const typOpts = `
+      <option value="work"     ${d.type==="work"    ?"selected":""}>✅ Práce</option>
+      <option value="vacation" ${d.type==="vacation"?"selected":""}>🌴 Dovolená</option>
+      <option value="sick"     ${d.type==="sick"    ?"selected":""}>🤒 Nemoc</option>
+      ${d.type==="holiday"?`<option value="holiday" selected>🎉 ${d.name||"Svátek"}</option>`:""}`;
+
+    const tr = document.createElement("tr");
+    tr.className = cls;
+    tr.innerHTML = `
+      <td>${fmtDate(d.date)}</td>
+      <td>${dow}</td>
+      <td class="no-print">
+        <select class="tp" onchange="chType(${m},${i},this.value)">${typOpts}</select>
+      </td>
+      <td><input class="ti" type="time" value="${d.start||""}" ${dis}
+           onchange="chTime(${m},${i},'start',this.value)"></td>
+      <td><input class="ti" type="time" value="${d.end||""}" ${dis}
+           onchange="chTime(${m},${i},'end',this.value)"></td>
+      <td class="hc" id="hc_${m}_${i}">${h||( d.type==="holiday"?"–":"")}</td>
+      <td class="no-print"></td>
+      <td class="hc">${d.type==="work"?"<b>"+h+"</b>":""}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  tfoot.innerHTML = `<tr>
+    <td colspan="7" style="text-align:right;padding-right:10px" class="no-print">Celkem za měsíc:</td>
+    <td colspan="8" style="text-align:right;padding-right:10px" class="print-only-cell">Celkem za měsíc:</td>
+    <td style="text-align:center;font-size:14px">${total}</td>
+  </tr>`;
+
+  // aktualizuj print-hlavičku
+  const phH = document.getElementById("ph-hours"+m);
+  const phT = document.getElementById("ph-total"+m);
+  if (phH) phH.textContent = total;
+  if (phT) phT.textContent = (total*RATE).toLocaleString("cs-CZ")+" KČ";
+
+  const mhead = document.getElementById("mhead"+m);
+  if (mhead) mhead.textContent =
+    `${MESICE[m-1]} 2026 — ${total} hodin  |  ${(total*RATE).toLocaleString("cs-CZ")} Kč`;
+
+  document.getElementById("bdg"+m).textContent = total+"h";
+}
+
+function renderOverview() {
+  let totH=0, totK=0, totV=0, totS=0;
+  const grid = document.getElementById("yrGrid");
+  grid.innerHTML = "";
+
+  for (let m=1; m<=12; m++) {
+    const s = monthStats(m);
+    totH+=s.hours; totK+=s.hours*RATE; totV+=s.vac; totS+=s.sick;
+    const mc = document.createElement("div");
+    mc.className="mc";
+    mc.onclick=()=>document.querySelector(`[data-p="m${m}"]`).click();
+    mc.innerHTML=`
+      <div class="mc-h"><span>${MESICE[m-1]}</span><span>${s.hours} h</span></div>
+      <div class="mc-b">
+        <div class="r"><span>Odprac. dny</span><span class="vv">${s.work}</span></div>
+        <div class="r"><span>Hodiny</span><span class="vv">${s.hours}</span></div>
+        <div class="r"><span>Fakturace</span><span class="vv">${s.hours?(s.hours*RATE).toLocaleString("cs-CZ")+" Kč":"–"}</span></div>
+      </div>
+      <div class="mc-f">
+        ${s.vac ?`<span class="pill pv">🌴 ${s.vac}d dov.</span>`:"<span></span>"}
+        ${s.sick?`<span class="pill ps">🤒 ${s.sick}d nem.</span>`:"<span></span>"}
+      </div>`;
+    grid.appendChild(mc);
+  }
+
+  document.getElementById("yrStats").innerHTML=`
+    <div class="sbox"><div class="v">${totH}</div><div class="l">Hodin celkem</div></div>
+    <div class="sbox"><div class="v">${totK.toLocaleString("cs-CZ")} Kč</div><div class="l">Fakturace celkem</div></div>
+    <div class="sbox"><div class="v">${totV}</div><div class="l">Dní dovolené</div></div>
+    <div class="sbox"><div class="v">${totS}</div><div class="l">Dní nemoci</div></div>
+    <div class="sbox"><div class="v">${RATE} Kč</div><div class="l">Sazba / hod</div></div>`;
+}
+
+// ══ ZMĚNY DAT ═════════════════════════════════════════════════════════════════
+function chType(m, i, val) {
+  const d = DATA.months[String(m)].days[i];
+  d.type = val;
+  if (val!=="work") { d.start=null; d.end=null; }
+  else { d.start=d.start||"12:00"; d.end=d.end||"20:00"; }
+  renderMonth(m); renderOverview(); saveData(true);
+}
+function chTime(m, i, fld, val) {
+  DATA.months[String(m)].days[i][fld]=val;
+  renderMonth(m); renderOverview(); saveData(true);
+}
+
+// ══ TISK PDF ══════════════════════════════════════════════════════════════════
+function printPdf() {
+  // Zjistíme aktivní měsíc
+  const active = document.querySelector(".panel.on");
+  if (!active || active.id==="panel-overview") {
+    showToast("Přejděte nejprve na konkrétní měsíc, poté klikněte Tisk / PDF.", true);
+    return;
+  }
+  window.print();
+}
+
+// ══ UI ════════════════════════════════════════════════════════════════════════
+function sw(el, pid) {
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on"));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("on"));
+  el.classList.add("on");
+  document.getElementById("panel-"+pid).classList.add("on");
+}
+
+function showToast(msg, err=false) {
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.className="toast on"+(err?" err":"");
+  setTimeout(()=>t.className="toast",3500);
+}
+
+// ══ INIT ══════════════════════════════════════════════════════════════════════
+buildTabs();
+for (let m=1; m<=12; m++) buildMonthPanel(m);
+for (let m=1; m<=12; m++) renderMonth(m);
+renderOverview();
+</script>
+</body>
+</html>
