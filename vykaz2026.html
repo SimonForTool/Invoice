@@ -838,6 +838,7 @@ for (let m=1; m<=12; m++) buildMonthPanel(m);
 for (let m=1; m<=12; m++) renderMonth(m);
 renderOverview();
 document.getElementById("rateInput").value = DATA.rate || 400;
+autoLoadGoogleIfLastDay();
 
 // ══ MICROSOFT GRAPH API — živé načtení z Outlooku ════════════════════════════
 
@@ -1039,107 +1040,102 @@ async function loadFromOutlook() {
   }
 }
 
-// ══ GOOGLE CALENDAR — načtení přes soukromou ICS URL ═════════════════════════
+// ══ GOOGLE CALENDAR — načtení přes Apps Script proxy ═════════════════════════
 
-async function loadFromGoogle() {
+const GOOGLE_STORAGE_KEY = "google_ics_url";
+
+async function fetchGoogleCalendar(url) {
+  const attempts = [
+    () => fetch(url),
+    () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`),
+    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`),
+  ];
+  for (const attempt of attempts) {
+    try {
+      const r = await attempt();
+      if (r.ok) {
+        const text = await r.text();
+        if (text.includes("BEGIN:VCALENDAR") || text.includes("BEGIN:VEVENT")) return text;
+      }
+    } catch(e) { /* zkusíme další */ }
+  }
+  throw new Error("Nepodařilo se načíst kalendář. Zkontrolujte URL.");
+}
+
+async function loadFromGoogle(silent = false) {
   const btn = document.getElementById("btnGoogle");
-  const STORAGE_KEY = "google_ics_url";
+  const STORAGE_KEY = GOOGLE_STORAGE_KEY;
+  let url = localStorage.getItem(STORAGE_KEY) || "";
 
-  // Načteme uloženou URL nebo požádáme o novou
-  let icsUrl = localStorage.getItem(STORAGE_KEY) || "";
-
-  const entered = await new Promise(resolve => {
-    const old = document.getElementById("googleUrlDialog");
-    if (old) old.remove();
-    const dlg = document.createElement("div");
-    dlg.id = "googleUrlDialog";
-    dlg.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
-      display:flex;align-items:center;justify-content:center;z-index:9999;`;
-    dlg.innerHTML = `
-      <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:640px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
-        <h3 style="margin:0 0 10px;font-size:16px">📅 Načíst z Google Calendar</h3>
-        <p style="margin:0 0 6px;font-size:13px;color:#444;line-height:1.6">
-          Vložte <b>Soukromou adresu ve formátu iCal</b> z Google Calendar:<br>
-          <span style="font-size:11px;color:#888">calendar.google.com → Nastavení → váš kalendář → dole „Soukromá adresa ve formátu iCal"</span>
-        </p>
-        <input id="gIcsUrlInput" type="text" value="${icsUrl.replace(/"/g,'&quot;')}"
-          placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
-          style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:14px">
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button onclick="document.getElementById('googleUrlDialog').remove();window._gResolve(null)"
-            style="padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:5px;cursor:pointer">Zrušit</button>
-          <button onclick="window._gResolve(document.getElementById('gIcsUrlInput').value.trim())"
-            style="padding:8px 18px;background:#4285f4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:bold">Načíst</button>
-        </div>
-      </div>`;
-    document.body.appendChild(dlg);
-    window._gResolve = val => { dlg.remove(); resolve(val); };
-    document.getElementById("gIcsUrlInput").addEventListener("keydown", e => {
-      if (e.key === "Enter") window._gResolve(document.getElementById("gIcsUrlInput").value.trim());
+  // Pokud URL není uložena, zobrazíme dialog
+  if (!url) {
+    url = await new Promise(resolve => {
+      const old = document.getElementById("googleUrlDialog");
+      if (old) old.remove();
+      const dlg = document.createElement("div");
+      dlg.id = "googleUrlDialog";
+      dlg.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
+        display:flex;align-items:center;justify-content:center;z-index:9999;`;
+      dlg.innerHTML = `
+        <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:640px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+          <h3 style="margin:0 0 10px;font-size:16px">📅 Načíst z Google Calendar</h3>
+          <p style="margin:0 0 6px;font-size:13px;color:#444;line-height:1.6">
+            Vložte URL vašeho <b>Google Apps Script proxy</b> (script.google.com/macros/s/.../exec):<br>
+            <span style="font-size:11px;color:#888">URL se uloží — příště se načte automaticky bez tohoto dialogu</span>
+          </p>
+          <input id="gIcsUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec"
+            style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:14px">
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button onclick="document.getElementById('googleUrlDialog').remove();window._gResolve(null)"
+              style="padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:5px;cursor:pointer">Zrušit</button>
+            <button onclick="window._gResolve(document.getElementById('gIcsUrlInput').value.trim())"
+              style="padding:8px 18px;background:#4285f4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:bold">Uložit a načíst</button>
+          </div>
+        </div>`;
+      document.body.appendChild(dlg);
+      window._gResolve = val => { dlg.remove(); resolve(val); };
+      document.getElementById("gIcsUrlInput").addEventListener("keydown", e => {
+        if (e.key === "Enter") window._gResolve(document.getElementById("gIcsUrlInput").value.trim());
+      });
     });
-    // Označit celé pole při kliknutí
-    document.getElementById("gIcsUrlInput").select();
-  });
+    if (!url) return;
+    localStorage.setItem(STORAGE_KEY, url);
+  }
 
-  if (!entered) return;
-
-  btn.textContent = "⏳ Načítám…";
-  btn.disabled = true;
+  if (btn) { btn.textContent = "⏳ Načítám…"; btn.disabled = true; }
 
   try {
-    localStorage.setItem(STORAGE_KEY, entered);
-
-    // Na HTTPS zkusíme: 1) přímý fetch, 2) různé proxy
-    if (location.protocol === "https:") {
-      const attempts = [
-        () => fetch(entered),
-        () => fetch(`https://corsproxy.io/?${encodeURIComponent(entered)}`),
-        () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(entered)}`),
-        () => fetch(`https://cors.sh/${entered}`, { headers: { "x-cors-api-key": "temp_demo" } }),
-      ];
-      let text = null;
-      for (const attempt of attempts) {
-        try {
-          const r = await attempt();
-          if (r.ok) { text = await r.text(); break; }
-        } catch(e) { /* zkusíme další */ }
-      }
-      if (!text) throw new Error("Nepodařilo se načíst kalendář. Zkontrolujte URL nebo síťové připojení.");
-      if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Neplatný ICS formát — zkontrolujte URL.");
-      const events = parseIcs(text);
-      applyAndRender(events);
-      return;
-    }
-
-    // Na lokálním souboru (file://) — otevřeme URL v novém okně, uživatel vybere .ics
-    window.open(entered, "_blank");
-    btn.textContent = "📅 Načíst z Google";
-    btn.disabled = false;
-    const info = document.createElement("div");
-    info.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
-      display:flex;align-items:center;justify-content:center;z-index:9999;`;
-    info.innerHTML = `
-      <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:480px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
-        <h3 style="margin:0 0 12px;font-size:16px">💡 Tip: používejte online verzi</h3>
-        <p style="margin:0 0 14px;font-size:13px;color:#444;line-height:1.7">
-          Pro plnou automatizaci otevřete aplikaci na:<br>
-          <a href="https://simonfortool.github.io/invoice/vykaz2026.html" target="_blank"
-             style="color:#4285f4;font-weight:bold">simonfortool.github.io/invoice/vykaz2026.html</a><br><br>
-          Tam stačí jedno kliknutí bez stahování souborů.
-        </p>
-        <button onclick="this.closest('div').parentElement.remove()"
-          style="padding:8px 18px;background:#4285f4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:bold">OK</button>
-      </div>`;
-    document.body.appendChild(info);
-    return;
+    const text = await fetchGoogleCalendar(url);
+    const events = parseIcs(text);
+    applyAndRender(events, silent ? "auto" : "Google Calendar");
+    if (!silent) showToast("Google Calendar načten.");
   } catch(e) {
     console.error(e);
+    // Při chybě smažeme uloženou URL, aby se příště zobrazil dialog
+    if (e.message.includes("Nepodařilo")) localStorage.removeItem(STORAGE_KEY);
     showToast("Chyba Google Calendar: " + e.message, true);
   } finally {
-    btn.textContent = "📅 Načíst z Google";
-    btn.disabled = false;
+    if (btn) { btn.textContent = "📅 Načíst z Google"; btn.disabled = false; }
   }
 }
+
+// Automatické načtení poslední den v měsíci
+function autoLoadGoogleIfLastDay() {
+  const url = localStorage.getItem(GOOGLE_STORAGE_KEY);
+  if (!url) return;
+  const today = new Date();
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const isLastDay = tomorrow.getDate() === 1; // zítra je 1. = dnes je poslední
+  if (isLastDay) {
+    const lastKey = `google_auto_${today.getFullYear()}_${today.getMonth()}`;
+    if (!localStorage.getItem(lastKey)) {
+      localStorage.setItem(lastKey, "1");
+      console.log("Automatické načtení Google Calendar — poslední den měsíce.");
+      setTimeout(() => loadFromGoogle(true), 2000);
+    }
+  }
+}
+
 
 // ══ IMPORT ICS (Outlook kalendář) ═══════════════════════════════════════════
 
