@@ -6,7 +6,6 @@
 <title>Výkaz práce 2026 – Šimon Jeleňák</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://unpkg.com/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
 <style>
 /* ══ ZÁKLADNÍ STYL ══════════════════════════════════════════════════════════ */
 :root {
@@ -839,59 +838,82 @@ document.getElementById("rateInput").value = DATA.rate || 400;
 
 // ══ MICROSOFT GRAPH API — živé načtení z Outlooku ════════════════════════════
 
-const MSAL_CONFIG = {
+const GRAPH_CONFIG = {
   clientId: "199ae62a-6c61-46b9-a408-7f63c07a54b3",
   tenantId: "36f1608d-afa3-455a-987e-c18d58e116d7",
 };
 
-let _msalApp = null;
+// Uložený token (vydrží do zavření souboru)
+let _accessToken = null;
+let _tokenExpiry  = 0;
 
-async function getMsal() {
-  if (_msalApp) return _msalApp;
-
-  // Podpora MSAL v2 (msal.PublicClientApplication) i v3 (@azure/msal-browser)
-  const PCA = window.msal?.PublicClientApplication
-           || window.msalBrowser?.PublicClientApplication;
-
-  if (!PCA) throw new Error("MSAL knihovna se nenačetla. Zkontrolujte připojení k internetu a povolte CDN v prohlížeči.");
-
-  const config = {
-    auth: {
-      clientId: MSAL_CONFIG.clientId,
-      authority: `https://login.microsoftonline.com/${MSAL_CONFIG.tenantId}`,
-      redirectUri: "http://localhost",
-    },
-    cache: { cacheLocation: "localStorage" },
-  };
-
-  _msalApp = new PCA(config);
-  // MSAL v3 vyžaduje initialize()
-  if (typeof _msalApp.initialize === "function") await _msalApp.initialize();
-  return _msalApp;
+function getTokenFromStorage() {
+  const saved = sessionStorage.getItem("graph_token");
+  if (!saved) return null;
+  try {
+    const { token, expiry } = JSON.parse(saved);
+    if (Date.now() < expiry - 60000) return token;
+  } catch(e) {}
+  return null;
 }
 
 async function getToken() {
-  const app    = await getMsal();
-  const scopes = ["Calendars.Read"];
-  const accounts = app.getAllAccounts();
-  if (accounts.length > 0) {
-    try {
-      const r = await app.acquireTokenSilent({ scopes, account: accounts[0] });
-      return r.accessToken;
-    } catch(e) {}
-  }
-  const r = await app.loginPopup({ scopes, prompt: "select_account" });
-  return r.accessToken;
+  // 1. Použijeme uložený token pokud je stále platný
+  const cached = getTokenFromStorage();
+  if (cached) return cached;
+
+  // 2. Otevřeme přihlašovací popup (implicit flow — token rovnou v URL)
+  const params = new URLSearchParams({
+    client_id:     GRAPH_CONFIG.clientId,
+    response_type: "token",
+    redirect_uri:  "http://localhost",
+    scope:         "https://graph.microsoft.com/Calendars.Read openid",
+    response_mode: "fragment",
+    nonce:         Math.random().toString(36).slice(2),
+    prompt:        "select_account",
+  });
+
+  const authUrl = `https://login.microsoftonline.com/${GRAPH_CONFIG.tenantId}/oauth2/v2.0/authorize?${params}`;
+  const popup   = window.open(authUrl, "graph_auth", "width=520,height=640,left=200,top=100");
+
+  if (!popup) throw new Error("Prohlížeč zablokoval popup okno. Povolte popupy pro tento soubor.");
+
+  return new Promise((resolve, reject) => {
+    const timer = setInterval(() => {
+      try {
+        const url = popup.location.href;
+        if (url.startsWith("http://localhost")) {
+          clearInterval(timer);
+          popup.close();
+          const hash   = url.includes("#") ? url.split("#")[1] : url.split("?")[1] || "";
+          const parsed = new URLSearchParams(hash);
+          const token  = parsed.get("access_token");
+          const error  = parsed.get("error_description") || parsed.get("error");
+          if (token) {
+            const expiry = Date.now() + parseInt(parsed.get("expires_in") || "3600") * 1000;
+            sessionStorage.setItem("graph_token", JSON.stringify({ token, expiry }));
+            resolve(token);
+          } else {
+            reject(new Error(error || "Token nebyl získán."));
+          }
+        }
+      } catch(e) {
+        // Cross-origin — stránka je stále na login.microsoftonline.com, čekáme
+      }
+      if (popup.closed) {
+        clearInterval(timer);
+        reject(new Error("Přihlašovací okno bylo zavřeno před dokončením."));
+      }
+    }, 300);
+  });
 }
 
 async function loadFromOutlook() {
   const btn = document.getElementById("btnGraph");
-  btn.textContent = "⏳ Připojuji…";
+  btn.textContent = "⏳ Přihlašuji…";
   btn.disabled = true;
 
   try {
-    await getMsal(); // inicializace
-    btn.textContent = "⏳ Přihlašuji…";
     const token = await getToken();
     btn.textContent = "⏳ Načítám…";
 
