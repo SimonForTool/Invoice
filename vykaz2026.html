@@ -973,9 +973,10 @@ async function loadFromOutlook() {
     const token = await getToken();
     btn.textContent = "⏳ Načítám…";
 
-    // Načteme události za rok 2026
-    const url = `https://graph.microsoft.com/v1.0/me/calendar/events`
-      + `?$select=subject,start,end`
+    // Načteme události za rok 2026 pomocí calendarView (správně filtruje dle data)
+    const url = `https://graph.microsoft.com/v1.0/me/calendarView`
+      + `?startDateTime=2026-01-01T00:00:00Z&endDateTime=2026-12-31T23:59:59Z`
+      + `&$select=subject,start,end`
       + `&$top=200`;
 
     // Ověření: zkusíme /me nejdřív
@@ -1001,14 +1002,18 @@ async function loadFromOutlook() {
     }
     const data = await resp.json();
     const events = data.value || [];
+    console.log(`Graph: načteno ${events.length} událostí. Subjekty:`, events.map(e => e.subject));
 
     // Převedeme Graph události do stejného formátu jako ICS parser
+    // dateTime z Graph je v lokálním čase daného timezone, ne UTC — nepřidáváme Z
     const icsLike = events.map(ev => ({
       subject: ev.subject,
       dates: (() => {
         const dates = [];
-        let d = new Date((ev.start.dateTime || ev.start.date + "T00:00:00") + (ev.start.dateTime?.endsWith("Z") ? "" : "Z"));
-        const e = new Date((ev.end.dateTime   || ev.end.date   + "T00:00:00") + (ev.end.dateTime?.endsWith("Z")   ? "" : "Z"));
+        const startStr = ev.start.dateTime ? ev.start.dateTime.slice(0,10) : ev.start.date;
+        const endStr   = ev.end.dateTime   ? ev.end.dateTime.slice(0,10)   : ev.end.date;
+        let d = new Date(startStr + "T00:00:00");
+        const e = new Date(endStr + "T00:00:00");
         while (d < e) { dates.push(localISO(d)); d.setDate(d.getDate() + 1); }
         return dates;
       })(),
