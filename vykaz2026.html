@@ -1087,24 +1087,35 @@ async function loadFromGoogle() {
   btn.disabled = true;
 
   try {
-    // Přímé stažení — otevřeme v novém okně, Chrome stáhne .ics automaticky
-    // Zároveň zobrazíme instrukci
-    window.open(entered, "_blank");
     localStorage.setItem(STORAGE_KEY, entered);
 
+    // Na HTTPS (GitHub Pages) použijeme CORS proxy — funguje automaticky
+    if (location.protocol === "https:") {
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(entered)}`;
+      const resp = await fetch(proxyUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
+      if (!text.includes("BEGIN:VCALENDAR")) throw new Error("Neplatný ICS formát.");
+      const events = parseIcs(text);
+      applyAndRender(events);
+      return;
+    }
+
+    // Na lokálním souboru (file://) — otevřeme URL v novém okně, uživatel vybere .ics
+    window.open(entered, "_blank");
     btn.textContent = "📅 Načíst z Google";
     btn.disabled = false;
-
-    // Informační dialog
     const info = document.createElement("div");
     info.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
       display:flex;align-items:center;justify-content:center;z-index:9999;`;
     info.innerHTML = `
       <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:480px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
-        <h3 style="margin:0 0 12px;font-size:16px">📥 Soubor se stahuje…</h3>
+        <h3 style="margin:0 0 12px;font-size:16px">💡 Tip: používejte online verzi</h3>
         <p style="margin:0 0 14px;font-size:13px;color:#444;line-height:1.7">
-          Chrome právě stahuje váš Google kalendář jako <b>.ics soubor</b>.<br>
-          Po dokončení stahování klikněte na tlačítko <b>📎 .ics</b> a vyberte stažený soubor.
+          Pro plnou automatizaci otevřete aplikaci na:<br>
+          <a href="https://simonfortool.github.io/invoice/vykaz2026.html" target="_blank"
+             style="color:#4285f4;font-weight:bold">simonfortool.github.io/invoice/vykaz2026.html</a><br><br>
+          Tam stačí jedno kliknutí bez stahování souborů.
         </p>
         <button onclick="this.closest('div').parentElement.remove()"
           style="padding:8px 18px;background:#4285f4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:bold">OK</button>
