@@ -237,6 +237,9 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
   <button class="btn no-print" id="btnGoogle"
           style="background:#4285f4;color:#fff"
           onclick="loadFromGoogle()">📅 Načíst z Google</button>
+  <button class="btn no-print"
+          style="background:#e65c00;color:#fff"
+          onclick="generateFaktura()">🧾 Faktura</button>
   <button class="btn no-print" id="btnIcs"
           style="background:#005a9e;color:#fff"
           onclick="document.getElementById('icsInput').click()" title="Záloha: export .ics z Outlooku">📎 .ics</button>
@@ -1255,6 +1258,245 @@ function applyAndRender(events, source) {
   saveData(true);
   document.querySelector(`[data-p="m${Math.min(...monthsFound)}"]`).click();
   showToast(`✓ ${source}: ${affectedMonths.join(", ")} — ${totalChanged} změn`);
+}
+
+// ══ GENERÁTOR FAKTURY ════════════════════════════════════════════════════════
+
+const MESICE_2 = ["ledna","února","března","dubna","května","června",
+                  "července","srpna","září","října","listopadu","prosince"];
+const MESICE_N = ["leden","únor","březen","duben","květen","červen",
+                  "červenec","srpen","září","říjen","listopad","prosinec"];
+
+function lastDayOf(year, month) {
+  return new Date(year, month, 0); // day 0 = last day of previous month
+}
+
+function generateFaktura() {
+  const m = activeMonth();
+  if (!m) { showToast("Přejděte nejprve na konkrétní měsíc.", true); return; }
+
+  const mData  = DATA.months[m] || {};
+  const rate   = DATA.rate || 400;
+  const days   = (mData.days || []).filter(d => d.type === "work");
+  const totalH = days.reduce((s,d) => {
+    const sh = parseInt((d.start||"0:0").split(":")[0]), sm = parseInt((d.start||"0:0").split(":")[1]||0);
+    const eh = parseInt((d.end  ||"0:0").split(":")[0]), em = parseInt((d.end  ||"0:0").split(":")[1]||0);
+    return s + Math.round((eh*60+em-sh*60-sm)/60);
+  }, 0);
+  const total  = totalH * rate;
+  const mm     = String(m).padStart(2,"0");
+  const mmYY   = `${mm}/2026`;
+
+  // Datum vystavení = poslední den měsíce
+  const lastD  = lastDayOf(2026, m);
+  const lastStr = `${String(lastD.getDate()).padStart(2,"0")}.${mm}.2026`;
+  // Datum splatnosti = 15. den následujícího měsíce
+  const nextM  = m === 12 ? 1 : m + 1;
+  const nextY  = m === 12 ? 2027 : 2026;
+  const splatStr = `15.${String(nextM).padStart(2,"0")}.${nextY}`;
+
+  // Číslo faktury: 26 + MM + 5místné pořadové číslo
+  const counterKey = "faktura_counter_2026";
+  let counter = parseInt(localStorage.getItem(counterKey) || "0") + 1;
+  const invoiceNo = `26${mm}${String(counter).padStart(5,"0")}`;
+
+  // Potvrdit číslo faktury
+  const confirmed = prompt(`Číslo faktury: ${invoiceNo}\nZměňte pokud potřebujete jiné číslo:`, invoiceNo);
+  if (confirmed === null) return;
+  const finalNo = confirmed.trim() || invoiceNo;
+  // Uložit counter jen pokud použili automatické číslo
+  if (confirmed.trim() === invoiceNo || confirmed.trim() === "") {
+    localStorage.setItem(counterKey, String(counter));
+  }
+
+  const totalStr = total.toLocaleString("cs-CZ", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const rateStr  = rate.toLocaleString("cs-CZ", {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+
+  // Pomocné funkce
+  const W = 210, M = 15; // šířka A4, margin
+  const cw = W - 2*M;   // content width = 180mm
+  let y = 0;
+
+  const col1x = M, col2x = M + cw*0.5;
+
+  function hline(yy, x1=M, x2=W-M, lw=0.3) {
+    doc.setLineWidth(lw); doc.line(x1, yy, x2, yy);
+  }
+  function box(x, yy, w, h, lw=0.3) {
+    doc.setLineWidth(lw); doc.rect(x, yy, w, h);
+  }
+
+  // ── HLAVIČKA ──────────────────────────────────────────────────────────────
+  y = 14;
+  // Logo text
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(0,80,160);
+  doc.text("Šimon JELEŇÁK", M, y);
+  // Číslo faktury
+  doc.setFontSize(14); doc.setTextColor(180,0,0);
+  doc.text(`FAKTURA č. ${finalNo}`, W-M, y, {align:"right"});
+  y += 1;
+  hline(y, M, W-M, 0.5);
+  y += 5;
+
+  // ── DODAVATEL + SYMBOLY ──────────────────────────────────────────────────
+  doc.setTextColor(0,80,160); doc.setFontSize(8); doc.setFont("helvetica","normal");
+  doc.text("Dodavatel:", col1x, y);
+  doc.text("Variabilní symbol:", col2x, y);
+  doc.setTextColor(0); doc.setFont("helvetica","bold");
+  doc.text(finalNo, W-M, y, {align:"right"});
+  y += 4;
+
+  doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(0);
+  doc.text("Šimon JELEŇÁK", col1x, y);
+  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(0,80,160);
+  doc.text("Konstantní symbol:", col2x, y);
+  doc.setTextColor(0); doc.setFont("helvetica","normal");
+  doc.text("308", W-M, y, {align:"right"});
+  y += 4;
+
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0);
+  doc.text("Zdětín 151", col1x, y);
+  doc.setTextColor(0,80,160); doc.setFontSize(8);
+  doc.text("Objednávka č.:", col2x, y);
+  doc.text("ze dne:", col2x+45, y);
+  y += 4;
+
+  doc.setTextColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
+  doc.text("294 71 Benátky nad Jizerou", col1x, y);
+  y += 8;
+
+  // Odběratel box (pravá strana)
+  const obY = y - 20;
+  doc.setTextColor(0,80,160); doc.setFontSize(8); doc.setFont("helvetica","normal");
+  doc.text("Odběratel:", col2x, obY+2);
+  doc.text("IČ:", col2x+45, obY+2);
+  doc.setTextColor(0); doc.setFont("helvetica","normal");
+  doc.text("06037976", W-M, obY+2, {align:"right"});
+  doc.setTextColor(0,80,160);
+  doc.text("DIČ:", col2x+45, obY+6);
+  doc.setTextColor(0);
+  doc.text("CZ06037977", W-M, obY+6, {align:"right"});
+
+  doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(0);
+  doc.text("ForTool-technologies s.r.o.", col2x, obY+12);
+  doc.setFontSize(8.5);
+  doc.text("Dukelská 626/88", col2x, obY+17);
+  doc.text("293 01 Mladá Boleslav", col2x, obY+22);
+
+  // IČ + DIČ dodavatele
+  doc.setTextColor(0,80,160); doc.setFontSize(8); doc.setFont("helvetica","normal");
+  doc.text("IČ: 43758207", col1x, y); y += 4;
+  doc.text("DIČ: není plátce DPH", col1x, y); y += 8;
+
+  hline(y, M, W-M, 0.3); y += 5;
+
+  // ── ČÍSLO ÚČTU + DATA ────────────────────────────────────────────────────
+  const infoY = y;
+  doc.setTextColor(0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+  doc.text("Číslo účtu:", col1x, infoY);
+  // Box pro číslo účtu
+  box(col1x+28, infoY-4, 55, 6);
+  doc.setFont("helvetica","bold");
+  doc.text("1863793012/3030", col1x+30, infoY);
+
+  // Konečný příjemce
+  doc.setTextColor(0,80,160); doc.setFont("helvetica","normal"); doc.setFontSize(8);
+  doc.text("Konečný příjemce:", col2x, infoY);
+
+  y = infoY + 6;
+  doc.setTextColor(0); doc.setFontSize(8.5);
+  doc.text("Datum vystavení:", col1x, y);
+  box(col1x+40, y-4, 32, 6); doc.setFont("helvetica","bold");
+  doc.text(lastStr, col1x+42, y);
+  y += 5;
+  doc.setFont("helvetica","normal");
+  doc.text("Datum splatnosti:", col1x, y);
+  box(col1x+40, y-4, 32, 6); doc.setFont("helvetica","bold");
+  doc.text(splatStr, col1x+42, y);
+  y += 5;
+  doc.setFont("helvetica","normal"); doc.setTextColor(0,80,160);
+  doc.text("Firma není plátce DPH.", col1x, y); y += 6;
+  doc.setTextColor(0);
+  doc.text("Forma úhrady:", col1x, y);
+  doc.setFont("helvetica","bold"); doc.text("Příkazem", col1x+40, y);
+  y += 6;
+
+  hline(y, M, W-M, 0.5); y += 1;
+
+  // ── TABULKA ──────────────────────────────────────────────────────────────
+  const tY = y;
+  const cOznaceni = M, cMnozstvi = M+100, cJcena = M+128, cCelkem = M+155;
+  doc.setFillColor(245,245,245);
+  doc.rect(M, tY, cw, 6, "F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(0);
+  doc.text("Označení dodávky", cOznaceni+1, tY+4);
+  doc.text("Množství", cMnozstvi, tY+4);
+  doc.text("J.cena", cJcena, tY+4);
+  doc.text("Kč Celkem", W-M-1, tY+4, {align:"right"});
+  hline(tY+6, M, W-M, 0.5);
+  y = tY + 8;
+
+  // Popis (kurzíva)
+  const descText = `Fakturuji Vám na základě rámcové smlouvy o poskytování služeb ze dne 27.02.2025_poradenská a konzultační činnost, zpracování odborných studií a posudků za ${mmYY}_příloha výkaz práce ${mmYY}.`;
+  doc.setFont("helvetica","italic"); doc.setFontSize(7.5); doc.setTextColor(0,80,160);
+  const descLines = doc.splitTextToSize(descText, cw-2);
+  doc.text(descLines, M+1, y);
+  y += descLines.length * 4 + 2;
+
+  // Položka
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0);
+  doc.text(`Poradenská a konzultační činnost_viz příloha ${mmYY}`, cOznaceni+1, y);
+  doc.text(String(totalH), cMnozstvi+5, y, {align:"right"});
+  doc.text(rateStr, cJcena+17, y, {align:"right"});
+  doc.text(totalStr, W-M-1, y, {align:"right"});
+  y += 6;
+
+  hline(y, M, W-M, 0.3); y += 1;
+
+  // Součet
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+  doc.text("Součet položek", cOznaceni+1, y+4);
+  doc.text(totalStr, W-M-1, y+4, {align:"right"});
+  y += 8;
+
+  // Celkem
+  doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
+  doc.text("CELKEM K ÚHRADĚ", cOznaceni+1, y+4);
+  doc.text(totalStr, W-M-1, y+4, {align:"right"});
+  y += 10;
+
+  hline(y, M, W-M, 0.5); y += 7;
+
+  // ── PODPIS ───────────────────────────────────────────────────────────────
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0);
+  doc.text("Vystavil:", col1x, y);
+  doc.setFont("helvetica","bold");
+  doc.text("Šimon Jeleňák", col1x+20, y);
+  y += 20;
+
+  // ── PATIČKA ──────────────────────────────────────────────────────────────
+  const footY = 260;
+  doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(80);
+  doc.text("Zapsán v živnostenském rejstříku v Mladé Boleslavi č.j. ObŽÚ/U4407/2019/KRI", M, footY);
+  const upoz = "Dovolujeme si Vás upozornit, že v případě nedodržení data splatnosti uvedeného na faktuře Vám budeme účtovat úrok z prodlení v dohodnuté,\nresp. zákonné výši a smluvní pokutu (byla-li sjednána).";
+  doc.text(upoz, M, footY+4);
+
+  // Převzal / Razítko
+  doc.setTextColor(0); doc.setFontSize(8);
+  doc.text("Převzal:", M, footY+18);
+  doc.text("Razítko:", W/2+10, footY+18);
+  hline(footY+20, M, W-M, 0.2);
+
+  doc.setFontSize(7); doc.setTextColor(120);
+  doc.text("Ekonomický a informační systém POHODA", M, footY+24);
+
+  // Stáhnout
+  const fname = `S.Jelenak_Faktura_${finalNo}.pdf`;
+  doc.save(fname);
+  showToast(`Faktura ${finalNo} uložena jako ${fname}`);
 }
 
 function loadIcs(input) {
