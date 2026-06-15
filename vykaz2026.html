@@ -1309,12 +1309,17 @@ async function generateFaktura() {
     localStorage.setItem(counterKey, String(counter));
   }
 
-  // ── ExcelJS XLSX generation ───────────────────────────────────────────────
+// ── ExcelJS XLSX generation ───────────────────────────────────────────────
+  const ISDOC_B64 = "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";
+
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("List1");
 
   ws.pageSetup = { paperSize: 9, orientation: "portrait",
     margins: { left: 0.394, right: 0.315, top: 0.748, bottom: 0.748, header: 0.315, footer: 0.315 } };
+
+  // Hide gridlines
+  ws.views = [{ showGridLines: false }];
 
   ws.columns = [
     { width: 0.71 },  // A
@@ -1346,136 +1351,173 @@ async function generateFaktura() {
   ws.mergeCells("E23:F23");
   ws.mergeCells("C26:J26");
 
+  // ISDOC logo
+  const imgId = wb.addImage({ base64: ISDOC_B64, extension: "png" });
+  ws.addImage(imgId, { tl: { col: 1, row: 0 }, ext: { width: 88, height: 34 } });
+
   const NAVY = { argb: "FF000080" };
   const numFmt = '_-* #,##0.00_-;\\-* #,##0.00_-;_-* "-"??_-;_-@_-';
   const thin   = { style: "thin" };
   const medium = { style: "medium" };
 
-  function sc(addr, value, fontOpts, alignOpts, borderOpts, nf) {
+  // Border accumulator: merge borders onto existing cell
+  function ab(addr, b) {
     const c = ws.getCell(addr);
-    c.value = value;
-    c.font = Object.assign({ name: "Arial", size: 10 }, fontOpts || {});
-    if (alignOpts) c.alignment = alignOpts;
-    if (borderOpts) c.border = borderOpts;
+    c.border = Object.assign({}, c.border || {}, b);
+  }
+
+  // Set cell value + font + alignment + numFmt
+  function sc(addr, value, fo, ao, nf) {
+    const c = ws.getCell(addr);
+    if (value !== null) c.value = value;
+    if (fo) c.font = Object.assign({ name: "Arial", size: 10 }, fo);
+    if (ao) c.alignment = ao;
     if (nf) c.numFmt = nf;
     return c;
   }
 
-  // ── Row 2 ──
-  sc("B2", "Šimon JELEŇÁK",     { size:12, bold:true });
+  // ── Outer box: B left thin, K right thin, rows 3-48 ──
+  for (let r = 3; r <= 48; r++) {
+    ab(`B${r}`, { left: thin });
+    ab(`K${r}`, { right: thin });
+  }
+
+  // ── Row 3: top border B3:K3 (thin) ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}3`, { top: thin }));
+
+  // ── G right thin separator rows 3-7 and 18-24 ──
+  [3,4,5,6,7,18,19,20,21,22,23,24].forEach(r => ab(`G${r}`, { right: thin }));
+
+  // ── K right thin rows 4-7 (overrides outer box with same style, fine) ──
+  // Already covered by outer box loop above
+
+  // ── Odběratel medium box H8:K17 ──
+  // Top edge row 8
+  ["H","I","J","K"].forEach(c => ab(`${c}8`, { top: medium }));
+  ab("H8", { left: medium }); ab("K8", { right: medium });
+  // Left H, Right K rows 9-16
+  for (let r = 9; r <= 16; r++) {
+    ab(`H${r}`, { left: medium });
+    ab(`K${r}`, { right: medium });
+  }
+  // Bottom edge row 17
+  ["H","I","J","K"].forEach(c => ab(`${c}17`, { bottom: medium }));
+  ab("H17", { left: medium }); ab("K17", { right: medium });
+
+  // ── Account number box D17:G17 (medium) ──
+  ab("D17", { left: medium, top: medium, bottom: medium, right: thin });
+  ab("E17", { top: medium, bottom: medium, right: thin });
+  ab("F17", { top: medium, bottom: medium });
+  ab("G17", { top: medium, bottom: medium, right: medium });
+
+  // ── G18 right thin (small tail) ──
+  ab("G18", { right: thin });
+
+  // ── Date boxes E19:F21 (thin all sides) ──
+  ["E19","E20","E21"].forEach(a => ab(a, { left: thin, right: thin, top: thin, bottom: thin }));
+  ["F19","F20","F21"].forEach(a => ab(a, { right: thin, top: thin, bottom: thin }));
+
+  // ── Row 24: full bottom thin B-K ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}24`, { bottom: thin }));
+
+  // ── Row 25: bottom thin B-K, top thin H-K ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}25`, { bottom: thin }));
+  ["H","I","J","K"].forEach(c => ab(`${c}25`, { top: thin }));
+
+  // ── Row 26: top thin B-K ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}26`, { top: thin }));
+
+  // ── Row 27: bottom thin B-K ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}27`, { bottom: thin }));
+
+  // ── Row 28: top thin B-K ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}28`, { top: thin }));
+
+  // ── Row 30: bottom thin B-K ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}30`, { bottom: thin }));
+
+  // ── Row 31: top thin B-K ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}31`, { top: thin }));
+
+  // ── Row 42: bottom thin, Row 43: top thin ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => {
+    ab(`${c}42`, { bottom: thin });
+    ab(`${c}43`, { top: thin });
+  });
+
+  // ── Row 48: bottom thin ──
+  ["B","C","D","E","F","G","H","I","J","K"].forEach(c => ab(`${c}48`, { bottom: thin }));
+
+  // ── Cell values ──
+  sc("B2", "Šimon JELEŇÁK",      { size:12, bold:true });
   sc("K2", `FAKTURA č. ${finalNo}`, { size:12, bold:true, color:NAVY }, { horizontal:"right" });
 
-  // ── Row 3: thin top border for two groups (B3:G3, H3:K3) ──
-  const r3Top = { top: thin };
-  sc("B3", null, {}, {}, { left: thin, top: thin });
-  ["C3","D3","E3","F3"].forEach(a => sc(a, null, {}, {}, r3Top));
-  sc("G3", null, {}, {}, { right: thin, top: thin });
-  ["H3","I3","J3"].forEach(a => sc(a, null, {}, {}, r3Top));
-  sc("K3", null, {}, {}, { right: thin, top: thin });
-
-  // ── Rows 4–7: dodavatel (left) + variabilní symbol (right) ──
   sc("C4", "Dodavatel:",              { size:8, color:NAVY }, { vertical:"center" });
-  sc("H4", "     Variabilní symbol:", {}, { vertical:"center" });
-  sc("J4", parseInt(finalNo),         {}, { vertical:"center" });
+  sc("H4", "     Variabilní symbol:", null, { vertical:"center" });
+  sc("J4", parseInt(finalNo),         null, { vertical:"center" });
+
   sc("C5", "Šimon JELEŇÁK",          { bold:true }, { vertical:"center" });
-  sc("H5", "     Konstantní symbol:", {}, { vertical:"center" });
-  sc("J5", 308,                       {}, { vertical:"center" });
+  sc("H5", "     Konstantní symbol:", null, { vertical:"center" });
+  sc("J5", 308,                       null, { vertical:"center" });
+
   sc("C6", "Zdětín 151",             { bold:true }, { vertical:"center" });
-  sc("H6", "     Objednávka č.:",    {}, { vertical:"center" });
-  sc("J6", "ze dne:",                {}, { horizontal:"left", vertical:"center" });
+  sc("H6", "     Objednávka č.:",    null, { vertical:"center" });
+  sc("J6", "ze dne:",                null, { horizontal:"left", vertical:"center" });
+
   sc("C7", "294 71 Benátky nad Jizerou", { bold:true }, { vertical:"center" });
-  // K7: thin right border
-  sc("K7", null, {}, {}, { right: thin });
 
-  // ── Row 8: top of odběratel box ──
-  sc("H8", null, {}, {}, { left: medium, top: medium });
-  sc("I8", null, {}, {}, { top: medium });
-  sc("J8", null, {}, {}, { top: medium });
-  sc("K8", null, {}, {}, { right: medium, top: medium });
+  sc("H9",  "     Odběratel:", { size:8, color:NAVY }, { vertical:"center" });
+  sc("I9",  "IČ:",             null, { vertical:"center" });
+  sc("J9",  "06037976",        null, { horizontal:"right", vertical:"center" }, "@");
 
-  // ── Rows 9–16: odběratel box left/right sides ──
-  const obL = { left: medium };
-  const obR = { right: medium };
-  sc("H9",  "     Odběratel:", { size:8, color:NAVY }, { vertical:"center" }, obL);
-  sc("I9",  "IČ:",             {}, { vertical:"center" });
-  sc("J9",  "06037976",        {}, { horizontal:"right", vertical:"center" }, {}, "@");
-  sc("K9",  null, {}, {}, obR);
   sc("C10", "IČ: 43758207",   { color:NAVY }, { vertical:"center" });
-  sc("H10", null, {}, {}, obL);
-  sc("I10", "DIČ:",            {}, { vertical:"center" });
-  sc("J10", "CZ06037977",      {}, { horizontal:"right", vertical:"center" }, {}, "@");
-  sc("K10", null, {}, {}, obR);
+  sc("I10", "DIČ:",            null, { vertical:"center" });
+  sc("J10", "CZ06037977",      null, { horizontal:"right", vertical:"center" }, "@");
+
   sc("C11", "DIČ: není plátce DPH", { color:NAVY }, { vertical:"center" });
-  sc("H11", null, {}, {}, obL);  sc("K11", null, {}, {}, obR);
-  sc("H12", "         ForTool-technologies s.r.o.", { size:11, bold:true }, { vertical:"center" }, obL);
-  sc("K12", null, {}, {}, obR);
-  sc("H13", "         Dukelská 626/88",            { size:11, bold:true }, { vertical:"center" }, obL);
-  sc("K13", null, {}, {}, obR);
-  sc("H14", "         293 01 Mladá Boleslav",      { size:11, bold:true }, { vertical:"center" }, obL);
-  sc("K14", null, {}, {}, obR);
-  sc("H15", null, {}, {}, obL);  sc("K15", null, {}, {}, obR);
-  sc("H16", null, {}, {}, obL);  sc("K16", null, {}, {}, obR);
 
-  // ── Row 17: číslo účtu + bottom of odběratel box ──
+  sc("H12", "         ForTool-technologies s.r.o.", { size:11, bold:true }, { vertical:"center" });
+  sc("H13", "         Dukelská 626/88",            { size:11, bold:true }, { vertical:"center" });
+  sc("H14", "         293 01 Mladá Boleslav",      { size:11, bold:true }, { vertical:"center" });
+
   sc("C17", "Číslo účtu:", { size:8 }, { vertical:"center" });
-  sc("D17", 1863793012, {}, { horizontal:"right", vertical:"center" },
-    { left:medium, right:thin, top:medium, bottom:medium });
-  // E17 is part of merge D17:E17
-  ws.getCell("E17").border = { right:thin, top:medium, bottom:medium };
-  sc("F17", 3030, {}, { horizontal:"left", vertical:"center" },
-    { top:medium, bottom:medium });
-  sc("G17", null, {}, {}, { right:medium, top:medium, bottom:medium });
-  sc("H17", null, {}, {}, { left:medium, bottom:medium });
-  sc("I17", null, {}, {}, { bottom:medium });
-  sc("J17", null, {}, {}, { bottom:medium });
-  sc("K17", null, {}, {}, { right:medium, bottom:medium });
-  sc("G18", null, {}, {}, { right: thin });
-  sc("K18", null, {}, {}, { right: thin });
+  sc("D17", 1863793012,    null, { horizontal:"right", vertical:"center" });
+  sc("F17", 3030,          null, { horizontal:"left",  vertical:"center" });
 
-  // ── Rows 19–21: dates ──
-  sc("C19", "Datum vystavení:", {}, { vertical:"center" });
-  sc("E19", `             ${lastStr}`, {}, { horizontal:"left", vertical:"center" },
-    { left:thin, right:thin, top:thin, bottom:thin }, "mm-dd-yy");
+  sc("C19", "Datum vystavení:",  null, { vertical:"center" });
+  sc("E19", `             ${lastStr}`, null, { horizontal:"left", vertical:"center" }, "mm-dd-yy");
   sc("H19", "     Konečný příjemce:", { size:8, color:NAVY }, { vertical:"center" });
-  sc("K19", null, {}, {}, { right: thin });
-  sc("C20", "Datum splatnosti:", {}, { vertical:"center" });
-  sc("E20", `             ${splatStr}`, {}, { horizontal:"left", vertical:"center" },
-    { left:thin, right:thin, top:thin, bottom:thin }, "mm-dd-yy");
-  sc("K20", null, {}, {}, { right: thin });
+
+  sc("C20", "Datum splatnosti:", null, { vertical:"center" });
+  sc("E20", `             ${splatStr}`, null, { horizontal:"left", vertical:"center" }, "mm-dd-yy");
+
   sc("C21", "Firma není plátce DPH.", { color:NAVY }, { vertical:"center" });
 
-  // ── Row 23: forma úhrady ──
-  sc("C23", "Forma úhrady:", {}, { vertical:"center" });
-  sc("E23", "Příkazem",     {}, { horizontal:"right", vertical:"center" });
+  sc("C23", "Forma úhrady:", null, { vertical:"center" });
+  sc("E23", "Příkazem",      null, { horizontal:"right", vertical:"center" });
 
-  // ── Row 25: table header ──
-  sc("C25", "Označení dodávky", {}, { vertical:"center" }, { bottom:thin });
-  sc("H25", "Množství",         {}, { vertical:"center" }, { top:thin, bottom:thin });
-  sc("I25", "J.cena     ",      {}, { vertical:"center" }, { top:thin, bottom:thin });
-  sc("J25", "Kč Celkem",        {}, { horizontal:"right", vertical:"center" }, { top:thin, bottom:thin });
+  sc("C25", "Označení dodávky", null, { vertical:"center" });
+  sc("H25", "Množství",         null, { vertical:"center" });
+  sc("I25", "J.cena     ",      null, { vertical:"center" });
+  sc("J25", "Kč Celkem",        null, { horizontal:"right", vertical:"center" });
 
-  // ── Row 26: description (merged C26:J26) ──
   const desc = `Fakturuji Vám na základě rámcové smlouvy o poskytování služeb ze dne 27.02.2025_poradenská a konzultační\nčinnost, zpracování odborných studií a posudků za ${mmYY}_příloha výkaz práce ${mmYY}.`;
-  sc("C26", desc, { size:9, color:NAVY }, { wrapText:true }, { top:thin });
+  sc("C26", desc, { size:9, color:NAVY }, { wrapText:true });
 
-  // ── Row 27: line item ──
-  sc("C27", `Poradenská a konzultační činnost_viz příloha ${mmYY}`,
-    { size:8 }, { vertical:"center" }, { bottom:thin });
-  sc("H27", totalH, { size:8 }, { horizontal:"center", vertical:"center" }, { bottom:thin });
-  sc("I27", rate,   { size:8 }, { horizontal:"left",   vertical:"center" }, { bottom:thin }, numFmt);
-  sc("J27", total,  { size:8 }, { vertical:"center" },                      { bottom:thin }, numFmt);
+  sc("C27", `Poradenská a konzultační činnost_viz příloha ${mmYY}`, { size:8 }, { vertical:"center" });
+  sc("H27", totalH, { size:8 }, { horizontal:"center", vertical:"center" });
+  sc("I27", rate,   { size:8 }, { horizontal:"left",   vertical:"center" }, numFmt);
+  sc("J27", total,  { size:8 }, { vertical:"center" },                      numFmt);
 
-  // ── Rows 29–30: totals ──
   sc("C29", "Součet položek", { size:8 });
-  sc("J29", total, { size:8 }, {}, {}, numFmt);
-  sc("C30", "CELKEM K ÚHRADĚ", { size:10, bold:true }, { vertical:"center" }, { bottom:thin });
-  sc("J30", total, { size:10, bold:true }, { vertical:"center" }, { bottom:thin }, numFmt);
+  sc("J29", total, { size:8 }, null, numFmt);
 
-  // ── Row 32: signature ──
+  sc("C30", "CELKEM K ÚHRADĚ", { size:10, bold:true }, { vertical:"center" });
+  sc("J30", total, { size:10, bold:true }, { vertical:"center" }, numFmt);
+
   sc("C32", "Vystavil:");
   sc("D32", "Šimon Jeleňák", { size:8 });
 
-  // ── Row 38, 40–41: legal texts ──
   sc("C38", "Zapsán v živnostenském rejstříku v Mladé Boleslavi č.j. ObŽÚ/U4407/2019/KRI",
     { name:"Calibri", size:7 });
   sc("C40", "Dovolujeme si Vás upozornit, že v případě nedodržení data splatnosti uvedeného na faktuře Vám budeme účtovat úrok z prodlení v dohodnuté, ",
@@ -1483,12 +1525,10 @@ async function generateFaktura() {
   sc("C41", "resp. zákonné výši a smluvní pokutu (byla-li sjednána).",
     { name:"Calibri", size:7 });
 
-  // ── Row 46: převzal / razítko ──
   sc("C46", "Převzal:", { size:8 });
   sc("H46", "Razítko:", { size:8 }, { horizontal:"right" });
 
-  // ── Row 48: POHODA ──
-  sc("C48", "Ekonomický a informační systém POHODA", { size:7 }, {}, { bottom:thin });
+  sc("C48", "Ekonomický a informační systém POHODA", { size:7 });
 
   // Download
   const buf = await wb.xlsx.writeBuffer();
