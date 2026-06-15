@@ -6,6 +6,7 @@
 <title>Výkaz práce 2026 – Šimon Jeleňák</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
 /* ══ ZÁKLADNÍ STYL ══════════════════════════════════════════════════════════ */
 :root {
@@ -1271,7 +1272,7 @@ function lastDayOf(year, month) {
   return new Date(year, month, 0); // day 0 = last day of previous month
 }
 
-function generateFaktura() {
+async function generateFaktura() {
   const m = activeMonth();
   if (!m) { showToast("Přejděte nejprve na konkrétní měsíc.", true); return; }
 
@@ -1295,208 +1296,193 @@ function generateFaktura() {
   const nextY  = m === 12 ? 2027 : 2026;
   const splatStr = `15.${String(nextM).padStart(2,"0")}.${nextY}`;
 
-  // Číslo faktury: 26 + MM + 5místné pořadové číslo
+  // Číslo faktury: 26 + MM + 5místné pořadové číslo; counter starts at 5 (last used = 260100005)
   const counterKey = "faktura_counter_2026";
-  let counter = parseInt(localStorage.getItem(counterKey) || "0") + 1;
+  let counter = parseInt(localStorage.getItem(counterKey) || "5") + 1;
   const invoiceNo = `26${mm}${String(counter).padStart(5,"0")}`;
 
   // Potvrdit číslo faktury
   const confirmed = prompt(`Číslo faktury: ${invoiceNo}\nZměňte pokud potřebujete jiné číslo:`, invoiceNo);
   if (confirmed === null) return;
   const finalNo = confirmed.trim() || invoiceNo;
-  // Uložit counter jen pokud použili automatické číslo
   if (confirmed.trim() === invoiceNo || confirmed.trim() === "") {
     localStorage.setItem(counterKey, String(counter));
   }
 
-  const totalStr = total.toLocaleString("cs-CZ", {minimumFractionDigits:2, maximumFractionDigits:2});
-  const rateStr  = rate.toLocaleString("cs-CZ", {minimumFractionDigits:2, maximumFractionDigits:2});
+  // ── ExcelJS XLSX generation ───────────────────────────────────────────────
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("List1");
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+  // Page setup (A4)
+  ws.pageSetup = { paperSize: 9, orientation: "portrait",
+    margins: { left: 0.394, right: 0.315, top: 0.748, bottom: 0.748, header: 0.315, footer: 0.315 } };
 
-  // Pomocné funkce
-  const W = 210, M = 15; // šířka A4, margin
-  const cw = W - 2*M;   // content width = 180mm
-  let y = 0;
+  // Column widths (in Excel character units, approximate from template)
+  ws.columns = [
+    { width: 0.71 },   // A
+    { width: 2.86 },   // B
+    { width: 15.43 },  // C
+    { width: 9.71 },   // D
+    { width: 10.29 },  // E
+    { width: 7.0 },    // F
+    { width: 3.14 },   // G
+    { width: 15.43 },  // H
+    { width: 9.57 },   // I
+    { width: 17.29 },  // J
+    { width: 2.57 },   // K
+  ];
 
-  const col1x = M, col2x = M + cw*0.5;
+  // Row heights
+  ws.getRow(2).height = 22.5;
+  for (let r = 4; r <= 16; r++) ws.getRow(r).height = 14.45;
+  ws.getRow(17).height = 14.45;
+  for (let r = 19; r <= 21; r++) ws.getRow(r).height = 14.45;
+  ws.getRow(23).height = 15.0;
+  ws.getRow(25).height = 23.25;
+  ws.getRow(26).height = 30.0;
+  ws.getRow(27).height = 30.0;
+  ws.getRow(30).height = 25.5;
 
-  function hline(yy, x1=M, x2=W-M, lw=0.3) {
-    doc.setLineWidth(lw); doc.line(x1, yy, x2, yy);
+  // Merged cells
+  ws.mergeCells("C26:J26");
+  ws.mergeCells("E20:F20");
+  ws.mergeCells("E19:F19");
+  ws.mergeCells("E23:F23");
+  ws.mergeCells("D17:E17");
+  ws.mergeCells("E21:F21");
+
+  // Color constants
+  const NAVY  = { argb: "FF000080" };
+  const BLACK = { argb: "FF000000" };
+  const numFmt = '_-* #,##0.00_-;\\-* #,##0.00_-;_-* "-"??_-;_-@_-';
+
+  function cell(addr, value, opts = {}) {
+    const c = ws.getCell(addr);
+    c.value = value;
+    c.font = Object.assign({ name: "Arial", size: 10 }, opts.font || {});
+    if (opts.alignment) c.alignment = opts.alignment;
+    if (opts.numFmt) c.numFmt = opts.numFmt;
+    return c;
   }
-  function box(x, yy, w, h, lw=0.3) {
-    doc.setLineWidth(lw); doc.rect(x, yy, w, h);
-  }
 
-  // ── HLAVIČKA ──────────────────────────────────────────────────────────────
-  y = 14;
-  // Logo text
-  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(0,80,160);
-  doc.text("Šimon JELEŇÁK", M, y);
-  // Číslo faktury
-  doc.setFontSize(14); doc.setTextColor(180,0,0);
-  doc.text(`FAKTURA č. ${finalNo}`, W-M, y, {align:"right"});
-  y += 1;
-  hline(y, M, W-M, 0.5);
-  y += 5;
+  // Row 2 – header
+  cell("B2", "Šimon JELEŇÁK", { font: { name:"Arial", size:12, bold:true } });
+  cell("K2", `FAKTURA č. ${finalNo}`, {
+    font: { name:"Arial", size:12, bold:true, color: NAVY },
+    alignment: { horizontal:"right" }
+  });
 
-  // ── DODAVATEL + SYMBOLY ──────────────────────────────────────────────────
-  doc.setTextColor(0,80,160); doc.setFontSize(8); doc.setFont("helvetica","normal");
-  doc.text("Dodavatel:", col1x, y);
-  doc.text("Variabilní symbol:", col2x, y);
-  doc.setTextColor(0); doc.setFont("helvetica","bold");
-  doc.text(finalNo, W-M, y, {align:"right"});
-  y += 4;
+  // Row 4 – labels
+  cell("C4", "Dodavatel:", { font:{ name:"Arial", size:8, color: NAVY } });
+  cell("H4", "     Variabilní symbol:", { font:{ name:"Arial", size:10 } });
+  cell("J4", parseInt(finalNo), { alignment:{ horizontal:"right" } });
 
-  doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(0);
-  doc.text("Šimon JELEŇÁK", col1x, y);
-  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(0,80,160);
-  doc.text("Konstantní symbol:", col2x, y);
-  doc.setTextColor(0); doc.setFont("helvetica","normal");
-  doc.text("308", W-M, y, {align:"right"});
-  y += 4;
+  // Row 5
+  cell("C5", "Šimon JELEŇÁK", { font:{ name:"Arial", size:10, bold:true } });
+  cell("H5", "     Konstantní symbol:");
+  cell("J5", 308, { alignment:{ horizontal:"right" } });
 
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0);
-  doc.text("Zdětín 151", col1x, y);
-  doc.setTextColor(0,80,160); doc.setFontSize(8);
-  doc.text("Objednávka č.:", col2x, y);
-  doc.text("ze dne:", col2x+45, y);
-  y += 4;
+  // Row 6
+  cell("C6", "Zdětín 151", { font:{ name:"Arial", size:10, bold:true } });
+  cell("H6", "     Objednávka č.:");
+  cell("J6", "ze dne:");
 
-  doc.setTextColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("294 71 Benátky nad Jizerou", col1x, y);
-  y += 8;
+  // Row 7
+  cell("C7", "294 71 Benátky nad Jizerou", { font:{ name:"Arial", size:10, bold:true } });
 
-  // Odběratel box (pravá strana)
-  const obY = y - 20;
-  doc.setTextColor(0,80,160); doc.setFontSize(8); doc.setFont("helvetica","normal");
-  doc.text("Odběratel:", col2x, obY+2);
-  doc.text("IČ:", col2x+45, obY+2);
-  doc.setTextColor(0); doc.setFont("helvetica","normal");
-  doc.text("06037976", W-M, obY+2, {align:"right"});
-  doc.setTextColor(0,80,160);
-  doc.text("DIČ:", col2x+45, obY+6);
-  doc.setTextColor(0);
-  doc.text("CZ06037977", W-M, obY+6, {align:"right"});
+  // Row 9 – odběratel
+  cell("H9", "     Odběratel:", { font:{ name:"Arial", size:8, color: NAVY } });
+  cell("I9", "IČ:");
+  cell("J9", "06037976", { alignment:{ horizontal:"right" } });
 
-  doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(0);
-  doc.text("ForTool-technologies s.r.o.", col2x, obY+12);
-  doc.setFontSize(8.5);
-  doc.text("Dukelská 626/88", col2x, obY+17);
-  doc.text("293 01 Mladá Boleslav", col2x, obY+22);
+  // Row 10
+  cell("C10", "IČ: 43758207", { font:{ name:"Arial", size:10, color: NAVY } });
+  cell("I10", "DIČ:");
+  cell("J10", "CZ06037977", { alignment:{ horizontal:"right" } });
 
-  // IČ + DIČ dodavatele
-  doc.setTextColor(0,80,160); doc.setFontSize(8); doc.setFont("helvetica","normal");
-  doc.text("IČ: 43758207", col1x, y); y += 4;
-  doc.text("DIČ: není plátce DPH", col1x, y); y += 8;
+  // Row 11
+  cell("C11", "DIČ: není plátce DPH", { font:{ name:"Arial", size:10, color: NAVY } });
 
-  hline(y, M, W-M, 0.3); y += 5;
+  // Row 12-14 – company name
+  cell("H12", "         ForTool-technologies s.r.o.", { font:{ name:"Arial", size:11, bold:true } });
+  cell("H13", "         Dukelská 626/88",            { font:{ name:"Arial", size:11, bold:true } });
+  cell("H14", "         293 01 Mladá Boleslav",      { font:{ name:"Arial", size:11, bold:true } });
 
-  // ── ČÍSLO ÚČTU + DATA ────────────────────────────────────────────────────
-  const infoY = y;
-  doc.setTextColor(0); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Číslo účtu:", col1x, infoY);
-  // Box pro číslo účtu
-  box(col1x+28, infoY-4, 55, 6);
-  doc.setFont("helvetica","bold");
-  doc.text("1863793012/3030", col1x+30, infoY);
+  // Row 17 – bank account
+  cell("C17", "Číslo účtu:");
+  cell("D17", 1863793012);
+  cell("F17", 3030);
 
-  // Konečný příjemce
-  doc.setTextColor(0,80,160); doc.setFont("helvetica","normal"); doc.setFontSize(8);
-  doc.text("Konečný příjemce:", col2x, infoY);
+  // Row 19 – dates
+  cell("C19", "Datum vystavení:");
+  cell("E19", lastStr);
+  cell("H19", "     Konečný příjemce:", { font:{ name:"Arial", size:10, color: NAVY } });
 
-  y = infoY + 6;
-  doc.setTextColor(0); doc.setFontSize(8.5);
-  doc.text("Datum vystavení:", col1x, y);
-  box(col1x+40, y-4, 32, 6); doc.setFont("helvetica","bold");
-  doc.text(lastStr, col1x+42, y);
-  y += 5;
-  doc.setFont("helvetica","normal");
-  doc.text("Datum splatnosti:", col1x, y);
-  box(col1x+40, y-4, 32, 6); doc.setFont("helvetica","bold");
-  doc.text(splatStr, col1x+42, y);
-  y += 5;
-  doc.setFont("helvetica","normal"); doc.setTextColor(0,80,160);
-  doc.text("Firma není plátce DPH.", col1x, y); y += 6;
-  doc.setTextColor(0);
-  doc.text("Forma úhrady:", col1x, y);
-  doc.setFont("helvetica","bold"); doc.text("Příkazem", col1x+40, y);
-  y += 6;
+  // Row 20
+  cell("C20", "Datum splatnosti:");
+  cell("E20", splatStr);
 
-  hline(y, M, W-M, 0.5); y += 1;
+  // Row 21
+  cell("C21", "Firma není plátce DPH.", { font:{ name:"Arial", size:10, color: NAVY } });
 
-  // ── TABULKA ──────────────────────────────────────────────────────────────
-  const tY = y;
-  const cOznaceni = M, cMnozstvi = M+100, cJcena = M+128, cCelkem = M+155;
-  doc.setFillColor(245,245,245);
-  doc.rect(M, tY, cw, 6, "F");
-  doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(0);
-  doc.text("Označení dodávky", cOznaceni+1, tY+4);
-  doc.text("Množství", cMnozstvi, tY+4);
-  doc.text("J.cena", cJcena, tY+4);
-  doc.text("Kč Celkem", W-M-1, tY+4, {align:"right"});
-  hline(tY+6, M, W-M, 0.5);
-  y = tY + 8;
+  // Row 23 – payment
+  cell("C23", "Forma úhrady:");
+  cell("E23", "Příkazem");
 
-  // Popis (kurzíva)
-  const descText = `Fakturuji Vám na základě rámcové smlouvy o poskytování služeb ze dne 27.02.2025_poradenská a konzultační činnost, zpracování odborných studií a posudků za ${mmYY}_příloha výkaz práce ${mmYY}.`;
-  doc.setFont("helvetica","italic"); doc.setFontSize(7.5); doc.setTextColor(0,80,160);
-  const descLines = doc.splitTextToSize(descText, cw-2);
-  doc.text(descLines, M+1, y);
-  y += descLines.length * 4 + 2;
+  // Row 25 – table headers
+  cell("C25", "Označení dodávky");
+  cell("H25", "Množství");
+  cell("I25", "J.cena     ");
+  cell("J25", "Kč Celkem", { alignment:{ horizontal:"right" } });
 
-  // Položka
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0);
-  doc.text(`Poradenská a konzultační činnost_viz příloha ${mmYY}`, cOznaceni+1, y);
-  doc.text(String(totalH), cMnozstvi+5, y, {align:"right"});
-  doc.text(rateStr, cJcena+17, y, {align:"right"});
-  doc.text(totalStr, W-M-1, y, {align:"right"});
-  y += 6;
+  // Row 26 – description (merged C26:J26)
+  const desc = `Fakturuji Vám na základě rámcové smlouvy o poskytování služeb ze dne 27.02.2025_poradenská a konzultační činnost, zpracování odborných studií a posudků za ${mmYY}_příloha výkaz práce ${mmYY}.`;
+  cell("C26", desc, { font:{ name:"Arial", size:10, italic:true, color: NAVY } });
 
-  hline(y, M, W-M, 0.3); y += 1;
+  // Row 27 – line item
+  cell("C27", `Poradenská a konzultační činnost_viz příloha ${mmYY}`);
+  cell("H27", totalH, { alignment:{ horizontal:"center" } });
+  cell("I27", rate, { numFmt });
+  cell("J27", total, { numFmt });
 
-  // Součet
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Součet položek", cOznaceni+1, y+4);
-  doc.text(totalStr, W-M-1, y+4, {align:"right"});
-  y += 8;
+  // Row 29 – subtotal
+  cell("C29", "Součet položek");
+  cell("J29", total, { numFmt });
 
-  // Celkem
-  doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
-  doc.text("CELKEM K ÚHRADĚ", cOznaceni+1, y+4);
-  doc.text(totalStr, W-M-1, y+4, {align:"right"});
-  y += 10;
+  // Row 30 – total
+  cell("C30", "CELKEM K ÚHRADĚ", { font:{ name:"Arial", size:10, bold:true } });
+  cell("J30", total, { font:{ name:"Arial", size:10, bold:true }, numFmt });
 
-  hline(y, M, W-M, 0.5); y += 7;
+  // Row 32 – signature
+  cell("C32", "Vystavil:");
+  cell("D32", "Šimon Jeleňák");
 
-  // ── PODPIS ───────────────────────────────────────────────────────────────
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(0);
-  doc.text("Vystavil:", col1x, y);
-  doc.setFont("helvetica","bold");
-  doc.text("Šimon Jeleňák", col1x+20, y);
-  y += 20;
+  // Row 38 – registration
+  cell("C38", "Zapsán v živnostenském rejstříku v Mladé Boleslavi č.j. ObŽÚ/U4407/2019/KRI",
+    { font:{ name:"Arial", size:7 } });
 
-  // ── PATIČKA ──────────────────────────────────────────────────────────────
-  const footY = 260;
-  doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(80);
-  doc.text("Zapsán v živnostenském rejstříku v Mladé Boleslavi č.j. ObŽÚ/U4407/2019/KRI", M, footY);
-  const upoz = "Dovolujeme si Vás upozornit, že v případě nedodržení data splatnosti uvedeného na faktuře Vám budeme účtovat úrok z prodlení v dohodnuté,\nresp. zákonné výši a smluvní pokutu (byla-li sjednána).";
-  doc.text(upoz, M, footY+4);
+  // Row 40-41 – warning
+  cell("C40", "Dovolujeme si Vás upozornit, že v případě nedodržení data splatnosti uvedeného na faktuře Vám budeme",
+    { font:{ name:"Arial", size:7 } });
+  cell("C41", "účtovat úrok z prodlení v dohodnuté, resp. zákonné výši a smluvní pokutu (byla-li sjednána).",
+    { font:{ name:"Arial", size:7 } });
 
-  // Převzal / Razítko
-  doc.setTextColor(0); doc.setFontSize(8);
-  doc.text("Převzal:", M, footY+18);
-  doc.text("Razítko:", W/2+10, footY+18);
-  hline(footY+20, M, W-M, 0.2);
+  // Row 46 – received / stamp
+  cell("C46", "Převzal:");
+  cell("H46", "Razítko:", { alignment:{ horizontal:"right" } });
 
-  doc.setFontSize(7); doc.setTextColor(120);
-  doc.text("Ekonomický a informační systém POHODA", M, footY+24);
+  // Row 48 – system
+  cell("C48", "Ekonomický a informační systém POHODA", { font:{ name:"Arial", size:7 } });
 
-  // Stáhnout
-  const fname = `S.Jelenak_Faktura_${finalNo}.pdf`;
-  doc.save(fname);
-  showToast(`Faktura ${finalNo} uložena jako ${fname}`);
+  // Download
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `S.Jelenak_Faktura_${finalNo}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Faktura ${finalNo} uložena jako S.Jelenak_Faktura_${finalNo}.xlsx`);
 }
 
 function loadIcs(input) {
