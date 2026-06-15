@@ -1313,29 +1313,25 @@ async function generateFaktura() {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("List1");
 
-  // Page setup (A4)
   ws.pageSetup = { paperSize: 9, orientation: "portrait",
     margins: { left: 0.394, right: 0.315, top: 0.748, bottom: 0.748, header: 0.315, footer: 0.315 } };
 
-  // Column widths (in Excel character units, approximate from template)
   ws.columns = [
-    { width: 0.71 },   // A
-    { width: 2.86 },   // B
-    { width: 15.43 },  // C
-    { width: 9.71 },   // D
-    { width: 10.29 },  // E
-    { width: 7.0 },    // F
-    { width: 3.14 },   // G
-    { width: 15.43 },  // H
-    { width: 9.57 },   // I
-    { width: 17.29 },  // J
-    { width: 2.57 },   // K
+    { width: 0.71 },  // A
+    { width: 2.86 },  // B
+    { width: 15.43 }, // C
+    { width: 9.71 },  // D
+    { width: 10.29 }, // E
+    { width: 7.0 },   // F
+    { width: 3.14 },  // G
+    { width: 15.43 }, // H
+    { width: 9.57 },  // I
+    { width: 17.29 }, // J
+    { width: 2.57 },  // K
   ];
 
-  // Row heights
   ws.getRow(2).height = 22.5;
-  for (let r = 4; r <= 16; r++) ws.getRow(r).height = 14.45;
-  ws.getRow(17).height = 14.45;
+  for (let r = 4; r <= 17; r++) ws.getRow(r).height = 14.45;
   for (let r = 19; r <= 21; r++) ws.getRow(r).height = 14.45;
   ws.getRow(23).height = 15.0;
   ws.getRow(25).height = 23.25;
@@ -1343,136 +1339,156 @@ async function generateFaktura() {
   ws.getRow(27).height = 30.0;
   ws.getRow(30).height = 25.5;
 
-  // Merged cells
-  ws.mergeCells("C26:J26");
-  ws.mergeCells("E20:F20");
-  ws.mergeCells("E19:F19");
-  ws.mergeCells("E23:F23");
   ws.mergeCells("D17:E17");
+  ws.mergeCells("E19:F19");
+  ws.mergeCells("E20:F20");
   ws.mergeCells("E21:F21");
+  ws.mergeCells("E23:F23");
+  ws.mergeCells("C26:J26");
 
-  // Color constants
-  const NAVY  = { argb: "FF000080" };
-  const BLACK = { argb: "FF000000" };
+  const NAVY = { argb: "FF000080" };
   const numFmt = '_-* #,##0.00_-;\\-* #,##0.00_-;_-* "-"??_-;_-@_-';
+  const thin   = { style: "thin" };
+  const medium = { style: "medium" };
 
-  function cell(addr, value, opts = {}) {
+  function sc(addr, value, fontOpts, alignOpts, borderOpts, nf) {
     const c = ws.getCell(addr);
     c.value = value;
-    c.font = Object.assign({ name: "Arial", size: 10 }, opts.font || {});
-    if (opts.alignment) c.alignment = opts.alignment;
-    if (opts.numFmt) c.numFmt = opts.numFmt;
+    c.font = Object.assign({ name: "Arial", size: 10 }, fontOpts || {});
+    if (alignOpts) c.alignment = alignOpts;
+    if (borderOpts) c.border = borderOpts;
+    if (nf) c.numFmt = nf;
     return c;
   }
 
-  // Row 2 – header
-  cell("B2", "Šimon JELEŇÁK", { font: { name:"Arial", size:12, bold:true } });
-  cell("K2", `FAKTURA č. ${finalNo}`, {
-    font: { name:"Arial", size:12, bold:true, color: NAVY },
-    alignment: { horizontal:"right" }
-  });
+  // ── Row 2 ──
+  sc("B2", "Šimon JELEŇÁK",     { size:12, bold:true });
+  sc("K2", `FAKTURA č. ${finalNo}`, { size:12, bold:true, color:NAVY }, { horizontal:"right" });
 
-  // Row 4 – labels
-  cell("C4", "Dodavatel:", { font:{ name:"Arial", size:8, color: NAVY } });
-  cell("H4", "     Variabilní symbol:", { font:{ name:"Arial", size:10 } });
-  cell("J4", parseInt(finalNo), { alignment:{ horizontal:"right" } });
+  // ── Row 3: thin top border for two groups (B3:G3, H3:K3) ──
+  const r3Top = { top: thin };
+  sc("B3", null, {}, {}, { left: thin, top: thin });
+  ["C3","D3","E3","F3"].forEach(a => sc(a, null, {}, {}, r3Top));
+  sc("G3", null, {}, {}, { right: thin, top: thin });
+  ["H3","I3","J3"].forEach(a => sc(a, null, {}, {}, r3Top));
+  sc("K3", null, {}, {}, { right: thin, top: thin });
 
-  // Row 5
-  cell("C5", "Šimon JELEŇÁK", { font:{ name:"Arial", size:10, bold:true } });
-  cell("H5", "     Konstantní symbol:");
-  cell("J5", 308, { alignment:{ horizontal:"right" } });
+  // ── Rows 4–7: dodavatel (left) + variabilní symbol (right) ──
+  sc("C4", "Dodavatel:",              { size:8, color:NAVY }, { vertical:"center" });
+  sc("H4", "     Variabilní symbol:", {}, { vertical:"center" });
+  sc("J4", parseInt(finalNo),         {}, { vertical:"center" });
+  sc("C5", "Šimon JELEŇÁK",          { bold:true }, { vertical:"center" });
+  sc("H5", "     Konstantní symbol:", {}, { vertical:"center" });
+  sc("J5", 308,                       {}, { vertical:"center" });
+  sc("C6", "Zdětín 151",             { bold:true }, { vertical:"center" });
+  sc("H6", "     Objednávka č.:",    {}, { vertical:"center" });
+  sc("J6", "ze dne:",                {}, { horizontal:"left", vertical:"center" });
+  sc("C7", "294 71 Benátky nad Jizerou", { bold:true }, { vertical:"center" });
+  // K7: thin right border
+  sc("K7", null, {}, {}, { right: thin });
 
-  // Row 6
-  cell("C6", "Zdětín 151", { font:{ name:"Arial", size:10, bold:true } });
-  cell("H6", "     Objednávka č.:");
-  cell("J6", "ze dne:");
+  // ── Row 8: top of odběratel box ──
+  sc("H8", null, {}, {}, { left: medium, top: medium });
+  sc("I8", null, {}, {}, { top: medium });
+  sc("J8", null, {}, {}, { top: medium });
+  sc("K8", null, {}, {}, { right: medium, top: medium });
 
-  // Row 7
-  cell("C7", "294 71 Benátky nad Jizerou", { font:{ name:"Arial", size:10, bold:true } });
+  // ── Rows 9–16: odběratel box left/right sides ──
+  const obL = { left: medium };
+  const obR = { right: medium };
+  sc("H9",  "     Odběratel:", { size:8, color:NAVY }, { vertical:"center" }, obL);
+  sc("I9",  "IČ:",             {}, { vertical:"center" });
+  sc("J9",  "06037976",        {}, { horizontal:"right", vertical:"center" }, {}, "@");
+  sc("K9",  null, {}, {}, obR);
+  sc("C10", "IČ: 43758207",   { color:NAVY }, { vertical:"center" });
+  sc("H10", null, {}, {}, obL);
+  sc("I10", "DIČ:",            {}, { vertical:"center" });
+  sc("J10", "CZ06037977",      {}, { horizontal:"right", vertical:"center" }, {}, "@");
+  sc("K10", null, {}, {}, obR);
+  sc("C11", "DIČ: není plátce DPH", { color:NAVY }, { vertical:"center" });
+  sc("H11", null, {}, {}, obL);  sc("K11", null, {}, {}, obR);
+  sc("H12", "         ForTool-technologies s.r.o.", { size:11, bold:true }, { vertical:"center" }, obL);
+  sc("K12", null, {}, {}, obR);
+  sc("H13", "         Dukelská 626/88",            { size:11, bold:true }, { vertical:"center" }, obL);
+  sc("K13", null, {}, {}, obR);
+  sc("H14", "         293 01 Mladá Boleslav",      { size:11, bold:true }, { vertical:"center" }, obL);
+  sc("K14", null, {}, {}, obR);
+  sc("H15", null, {}, {}, obL);  sc("K15", null, {}, {}, obR);
+  sc("H16", null, {}, {}, obL);  sc("K16", null, {}, {}, obR);
 
-  // Row 9 – odběratel
-  cell("H9", "     Odběratel:", { font:{ name:"Arial", size:8, color: NAVY } });
-  cell("I9", "IČ:");
-  cell("J9", "06037976", { alignment:{ horizontal:"right" } });
+  // ── Row 17: číslo účtu + bottom of odběratel box ──
+  sc("C17", "Číslo účtu:", { size:8 }, { vertical:"center" });
+  sc("D17", 1863793012, {}, { horizontal:"right", vertical:"center" },
+    { left:medium, right:thin, top:medium, bottom:medium });
+  // E17 is part of merge D17:E17
+  ws.getCell("E17").border = { right:thin, top:medium, bottom:medium };
+  sc("F17", 3030, {}, { horizontal:"left", vertical:"center" },
+    { top:medium, bottom:medium });
+  sc("G17", null, {}, {}, { right:medium, top:medium, bottom:medium });
+  sc("H17", null, {}, {}, { left:medium, bottom:medium });
+  sc("I17", null, {}, {}, { bottom:medium });
+  sc("J17", null, {}, {}, { bottom:medium });
+  sc("K17", null, {}, {}, { right:medium, bottom:medium });
+  sc("G18", null, {}, {}, { right: thin });
+  sc("K18", null, {}, {}, { right: thin });
 
-  // Row 10
-  cell("C10", "IČ: 43758207", { font:{ name:"Arial", size:10, color: NAVY } });
-  cell("I10", "DIČ:");
-  cell("J10", "CZ06037977", { alignment:{ horizontal:"right" } });
+  // ── Rows 19–21: dates ──
+  sc("C19", "Datum vystavení:", {}, { vertical:"center" });
+  sc("E19", `             ${lastStr}`, {}, { horizontal:"left", vertical:"center" },
+    { left:thin, right:thin, top:thin, bottom:thin }, "mm-dd-yy");
+  sc("H19", "     Konečný příjemce:", { size:8, color:NAVY }, { vertical:"center" });
+  sc("K19", null, {}, {}, { right: thin });
+  sc("C20", "Datum splatnosti:", {}, { vertical:"center" });
+  sc("E20", `             ${splatStr}`, {}, { horizontal:"left", vertical:"center" },
+    { left:thin, right:thin, top:thin, bottom:thin }, "mm-dd-yy");
+  sc("K20", null, {}, {}, { right: thin });
+  sc("C21", "Firma není plátce DPH.", { color:NAVY }, { vertical:"center" });
 
-  // Row 11
-  cell("C11", "DIČ: není plátce DPH", { font:{ name:"Arial", size:10, color: NAVY } });
+  // ── Row 23: forma úhrady ──
+  sc("C23", "Forma úhrady:", {}, { vertical:"center" });
+  sc("E23", "Příkazem",     {}, { horizontal:"right", vertical:"center" });
 
-  // Row 12-14 – company name
-  cell("H12", "         ForTool-technologies s.r.o.", { font:{ name:"Arial", size:11, bold:true } });
-  cell("H13", "         Dukelská 626/88",            { font:{ name:"Arial", size:11, bold:true } });
-  cell("H14", "         293 01 Mladá Boleslav",      { font:{ name:"Arial", size:11, bold:true } });
+  // ── Row 25: table header ──
+  sc("C25", "Označení dodávky", {}, { vertical:"center" }, { bottom:thin });
+  sc("H25", "Množství",         {}, { vertical:"center" }, { top:thin, bottom:thin });
+  sc("I25", "J.cena     ",      {}, { vertical:"center" }, { top:thin, bottom:thin });
+  sc("J25", "Kč Celkem",        {}, { horizontal:"right", vertical:"center" }, { top:thin, bottom:thin });
 
-  // Row 17 – bank account
-  cell("C17", "Číslo účtu:");
-  cell("D17", 1863793012);
-  cell("F17", 3030);
+  // ── Row 26: description (merged C26:J26) ──
+  const desc = `Fakturuji Vám na základě rámcové smlouvy o poskytování služeb ze dne 27.02.2025_poradenská a konzultační\nčinnost, zpracování odborných studií a posudků za ${mmYY}_příloha výkaz práce ${mmYY}.`;
+  sc("C26", desc, { size:9, color:NAVY }, { wrapText:true }, { top:thin });
 
-  // Row 19 – dates
-  cell("C19", "Datum vystavení:");
-  cell("E19", lastStr);
-  cell("H19", "     Konečný příjemce:", { font:{ name:"Arial", size:10, color: NAVY } });
+  // ── Row 27: line item ──
+  sc("C27", `Poradenská a konzultační činnost_viz příloha ${mmYY}`,
+    { size:8 }, { vertical:"center" }, { bottom:thin });
+  sc("H27", totalH, { size:8 }, { horizontal:"center", vertical:"center" }, { bottom:thin });
+  sc("I27", rate,   { size:8 }, { horizontal:"left",   vertical:"center" }, { bottom:thin }, numFmt);
+  sc("J27", total,  { size:8 }, { vertical:"center" },                      { bottom:thin }, numFmt);
 
-  // Row 20
-  cell("C20", "Datum splatnosti:");
-  cell("E20", splatStr);
+  // ── Rows 29–30: totals ──
+  sc("C29", "Součet položek", { size:8 });
+  sc("J29", total, { size:8 }, {}, {}, numFmt);
+  sc("C30", "CELKEM K ÚHRADĚ", { size:10, bold:true }, { vertical:"center" }, { bottom:thin });
+  sc("J30", total, { size:10, bold:true }, { vertical:"center" }, { bottom:thin }, numFmt);
 
-  // Row 21
-  cell("C21", "Firma není plátce DPH.", { font:{ name:"Arial", size:10, color: NAVY } });
+  // ── Row 32: signature ──
+  sc("C32", "Vystavil:");
+  sc("D32", "Šimon Jeleňák", { size:8 });
 
-  // Row 23 – payment
-  cell("C23", "Forma úhrady:");
-  cell("E23", "Příkazem");
+  // ── Row 38, 40–41: legal texts ──
+  sc("C38", "Zapsán v živnostenském rejstříku v Mladé Boleslavi č.j. ObŽÚ/U4407/2019/KRI",
+    { name:"Calibri", size:7 });
+  sc("C40", "Dovolujeme si Vás upozornit, že v případě nedodržení data splatnosti uvedeného na faktuře Vám budeme účtovat úrok z prodlení v dohodnuté, ",
+    { name:"Calibri", size:7 });
+  sc("C41", "resp. zákonné výši a smluvní pokutu (byla-li sjednána).",
+    { name:"Calibri", size:7 });
 
-  // Row 25 – table headers
-  cell("C25", "Označení dodávky");
-  cell("H25", "Množství");
-  cell("I25", "J.cena     ");
-  cell("J25", "Kč Celkem", { alignment:{ horizontal:"right" } });
+  // ── Row 46: převzal / razítko ──
+  sc("C46", "Převzal:", { size:8 });
+  sc("H46", "Razítko:", { size:8 }, { horizontal:"right" });
 
-  // Row 26 – description (merged C26:J26)
-  const desc = `Fakturuji Vám na základě rámcové smlouvy o poskytování služeb ze dne 27.02.2025_poradenská a konzultační činnost, zpracování odborných studií a posudků za ${mmYY}_příloha výkaz práce ${mmYY}.`;
-  cell("C26", desc, { font:{ name:"Arial", size:10, italic:true, color: NAVY } });
-
-  // Row 27 – line item
-  cell("C27", `Poradenská a konzultační činnost_viz příloha ${mmYY}`);
-  cell("H27", totalH, { alignment:{ horizontal:"center" } });
-  cell("I27", rate, { numFmt });
-  cell("J27", total, { numFmt });
-
-  // Row 29 – subtotal
-  cell("C29", "Součet položek");
-  cell("J29", total, { numFmt });
-
-  // Row 30 – total
-  cell("C30", "CELKEM K ÚHRADĚ", { font:{ name:"Arial", size:10, bold:true } });
-  cell("J30", total, { font:{ name:"Arial", size:10, bold:true }, numFmt });
-
-  // Row 32 – signature
-  cell("C32", "Vystavil:");
-  cell("D32", "Šimon Jeleňák");
-
-  // Row 38 – registration
-  cell("C38", "Zapsán v živnostenském rejstříku v Mladé Boleslavi č.j. ObŽÚ/U4407/2019/KRI",
-    { font:{ name:"Arial", size:7 } });
-
-  // Row 40-41 – warning
-  cell("C40", "Dovolujeme si Vás upozornit, že v případě nedodržení data splatnosti uvedeného na faktuře Vám budeme",
-    { font:{ name:"Arial", size:7 } });
-  cell("C41", "účtovat úrok z prodlení v dohodnuté, resp. zákonné výši a smluvní pokutu (byla-li sjednána).",
-    { font:{ name:"Arial", size:7 } });
-
-  // Row 46 – received / stamp
-  cell("C46", "Převzal:");
-  cell("H46", "Razítko:", { alignment:{ horizontal:"right" } });
-
-  // Row 48 – system
-  cell("C48", "Ekonomický a informační systém POHODA", { font:{ name:"Arial", size:7 } });
+  // ── Row 48: POHODA ──
+  sc("C48", "Ekonomický a informační systém POHODA", { size:7 }, {}, { bottom:thin });
 
   // Download
   const buf = await wb.xlsx.writeBuffer();
