@@ -240,7 +240,10 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
           onclick="loadFromGoogle()">📅 Načíst z Google</button>
   <button class="btn no-print"
           style="background:#e65c00;color:#fff"
-          onclick="generateFaktura()">🧾 Faktura</button>
+          onclick="generateFaktura()">🧾 Faktura XLSX</button>
+  <button class="btn no-print"
+          style="background:#c0392b;color:#fff"
+          onclick="exportFakturaPdf()">🧾 Faktura PDF</button>
   <button class="btn no-print" id="btnIcs"
           style="background:#005a9e;color:#fff"
           onclick="document.getElementById('icsInput').click()" title="Záloha: export .ics z Outlooku">📎 .ics</button>
@@ -1540,6 +1543,196 @@ async function generateFaktura() {
   a.click();
   URL.revokeObjectURL(url);
   showToast(`Faktura ${finalNo} uložena jako S.Jelenak_Faktura_${finalNo}.xlsx`);
+}
+
+function getFakturaData() {
+  const m = activeMonth();
+  if (!m) return null;
+  const mData  = DATA.months[m] || {};
+  const rate   = DATA.rate || 400;
+  const days   = (mData.days || []).filter(d => d.type === "work");
+  const totalH = days.reduce((s,d) => {
+    const sh = parseInt((d.start||"0:0").split(":")[0]), sm = parseInt((d.start||"0:0").split(":")[1]||0);
+    const eh = parseInt((d.end  ||"0:0").split(":")[0]), em = parseInt((d.end  ||"0:0").split(":")[1]||0);
+    return s + Math.round((eh*60+em-sh*60-sm)/60);
+  }, 0);
+  const total   = totalH * rate;
+  const mm      = String(m).padStart(2,"0");
+  const mmYY    = `${mm}/2026`;
+  const lastD   = lastDayOf(2026, m);
+  const lastStr = `${String(lastD.getDate()).padStart(2,"0")}.${mm}.2026`;
+  const nextM   = m === 12 ? 1 : m + 1;
+  const nextY   = m === 12 ? 2027 : 2026;
+  const splatStr = `15.${String(nextM).padStart(2,"0")}.${nextY}`;
+  const counterKey = "faktura_counter_2026";
+  const counter = parseInt(localStorage.getItem(counterKey) || "5") + 1;
+  const invoiceNo = `2601${String(counter).padStart(5,"0")}`;
+  return { m, mm, mmYY, totalH, rate, total, lastStr, splatStr, invoiceNo };
+}
+
+function buildFakturaHtml(d, finalNo) {
+  const fmt = v => v.toLocaleString("cs-CZ", {minimumFractionDigits:2, maximumFractionDigits:2});
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:9pt;color:#000;width:190mm;margin:0 auto}
+  .navy{color:#000080}
+  table{border-collapse:collapse;width:100%}
+  td{padding:1px 3px;vertical-align:middle}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:4px}
+  .hdr-name{font-size:12pt;font-weight:bold}
+  .hdr-inv{font-size:12pt;font-weight:bold;color:#000080}
+  .outer{border:1px solid #aaa;padding:0}
+  .row2col{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #ccc}
+  .col-left{padding:3px 6px;border-right:1px solid #ccc}
+  .col-right{padding:3px 6px}
+  .odberatel-box{border:2px solid #000;padding:4px 6px;margin:3px 0 3px 3px}
+  .sect{padding:3px 6px}
+  .sect-row{display:flex;gap:4px;align-items:center;margin:1px 0}
+  .label{color:#888;font-size:7.5pt;white-space:nowrap}
+  .val-box{border:1px solid #888;padding:1px 4px;min-width:70px;display:inline-block}
+  .account-box{border:2px solid #000;display:inline-block;padding:1px 5px;font-size:9pt}
+  .tbl-hdr td{border-top:1px solid #aaa;border-bottom:1px solid #aaa;font-size:8.5pt;padding:2px 4px}
+  .tbl-desc td{border-top:1px solid #ccc;font-size:8pt;color:#000080;font-style:italic;padding:3px 4px}
+  .tbl-item td{border-bottom:1px solid #aaa;font-size:8pt;padding:3px 4px}
+  .tbl-sum td{font-size:8pt;padding:2px 4px}
+  .tbl-total td{border-top:1px solid #000;border-bottom:2px solid #000;font-weight:bold;font-size:10pt;padding:3px 4px}
+  .sep{border-top:1px solid #aaa;margin:3px 0}
+  .sign-row{display:flex;gap:30px;padding:3px 6px;font-size:8.5pt}
+  .footer{padding:3px 6px;font-size:7pt;color:#444;margin-top:4px}
+  .prevzal{display:flex;justify-content:space-between;padding:3px 6px;font-size:8.5pt;margin-top:20px}
+  .pohoda{font-size:7pt;color:#666;padding:2px 6px;border-top:1px solid #ccc;border-bottom:1px solid #ccc}
+  .num{text-align:right}
+  .right{text-align:right}
+</style>
+</head><body>
+<div class="hdr">
+  <div class="hdr-name">Šimon JELEŇÁK</div>
+  <div class="hdr-inv">FAKTURA č. ${finalNo}</div>
+</div>
+<table><tr>
+<td style="width:50%;vertical-align:top;padding:4px 6px">
+  <div class="navy" style="font-size:8pt">Dodavatel:</div>
+  <div style="font-weight:bold">Šimon JELEŇÁK</div>
+  <div style="font-weight:bold">Zdětín 151</div>
+  <div style="font-weight:bold">294 71 Benátky nad Jizerou</div>
+  <br>
+  <div class="navy">IČ: 43758207</div>
+  <div class="navy">DIČ: není plátce DPH</div>
+</td>
+<td style="width:50%;vertical-align:top;padding:4px 6px">
+  <table style="width:100%">
+    <tr><td>Variabilní symbol:</td><td class="num">${finalNo}</td></tr>
+    <tr><td>Konstantní symbol:</td><td class="num">308</td></tr>
+    <tr><td>Objednávka č.:</td><td>ze dne:</td></tr>
+  </table>
+  <div class="odberatel-box" style="margin-top:6px">
+    <div style="display:flex;justify-content:space-between">
+      <span class="navy" style="font-size:8pt">Odběratel:</span>
+      <span>IČ: <strong>06037976</strong></span>
+    </div>
+    <div style="text-align:right">DIČ: <strong>CZ06037977</strong></div>
+    <div style="font-weight:bold;font-size:10pt;margin-top:4px">ForTool-technologies s.r.o.</div>
+    <div style="font-weight:bold">Dukelská 626/88</div>
+    <div style="font-weight:bold">293 01 Mladá Boleslav</div>
+  </div>
+</td>
+</tr></table>
+<div class="sep"></div>
+<table><tr>
+<td style="width:50%;padding:3px 6px;vertical-align:top">
+  <div class="sect-row"><span>Číslo účtu:</span>&nbsp;<span class="account-box">1863793012 / 3030</span></div>
+  <div class="sect-row" style="margin-top:3px"><span>Datum vystavení:</span>&nbsp;<span class="val-box">${d.lastStr}</span></div>
+  <div class="sect-row"><span>Datum splatnosti:</span>&nbsp;<span class="val-box">${d.splatStr}</span></div>
+  <div class="sect-row navy" style="margin-top:2px">Firma není plátce DPH.</div>
+  <div class="sect-row" style="margin-top:3px"><span>Forma úhrady:</span>&nbsp;<strong>Příkazem</strong></div>
+</td>
+<td style="width:50%;padding:3px 6px;vertical-align:top">
+  <span class="navy" style="font-size:8pt">Konečný příjemce:</span>
+</td>
+</tr></table>
+<div class="sep"></div>
+<table>
+  <tr class="tbl-hdr">
+    <td style="width:58%">Označení dodávky</td>
+    <td style="width:12%;text-align:center">Množství</td>
+    <td style="width:15%;text-align:right">J.cena</td>
+    <td style="width:15%;text-align:right">Kč Celkem</td>
+  </tr>
+  <tr class="tbl-desc">
+    <td colspan="4">Fakturuji Vám na základě rámcové smlouvy o poskytování služeb ze dne 27.02.2025_poradenská a konzultační činnost, zpracování odborných studií a posudků za ${d.mmYY}_příloha výkaz práce ${d.mmYY}.</td>
+  </tr>
+  <tr class="tbl-item">
+    <td>Poradenská a konzultační činnost_viz příloha ${d.mmYY}</td>
+    <td style="text-align:center">${d.totalH}</td>
+    <td class="num">${fmt(d.rate)}</td>
+    <td class="num">${fmt(d.total)}</td>
+  </tr>
+  <tr class="tbl-sum">
+    <td colspan="3">Součet položek</td>
+    <td class="num">${fmt(d.total)}</td>
+  </tr>
+  <tr class="tbl-total">
+    <td colspan="3">CELKEM K ÚHRADĚ</td>
+    <td class="num">${fmt(d.total)}</td>
+  </tr>
+</table>
+<div class="sign-row" style="margin-top:6px">
+  <span>Vystavil:</span><span>Šimon Jeleňák</span>
+</div>
+<div class="footer" style="margin-top:30px">
+  Zapsán v živnostenském rejstříku v Mladé Boleslavi č.j. ObŽÚ/U4407/2019/KRI
+</div>
+<div class="footer">
+  Dovolujeme si Vás upozornit, že v případě nedodržení data splatnosti uvedeného na faktuře Vám budeme účtovat úrok z prodlení v dohodnuté,<br>
+  resp. zákonné výši a smluvní pokutu (byla-li sjednána).
+</div>
+<div class="prevzal">
+  <span>Převzal:</span><span>Razítko:</span>
+</div>
+<div class="pohoda" style="margin-top:10px">Ekonomický a informační systém POHODA</div>
+</body></html>`;
+}
+
+async function exportFakturaPdf() {
+  const m = activeMonth();
+  if (!m) { showToast("Přejděte nejprve na konkrétní měsíc.", true); return; }
+  const d = getFakturaData();
+  const counterKey = "faktura_counter_2026";
+  let counter = parseInt(localStorage.getItem(counterKey) || "5") + 1;
+  const invoiceNo = `2601${String(counter).padStart(5,"0")}`;
+  const confirmed = prompt(`Číslo faktury (PDF): ${invoiceNo}\nZměňte pokud potřebujete jiné číslo:`, invoiceNo);
+  if (confirmed === null) return;
+  const finalNo = confirmed.trim() || invoiceNo;
+  if (confirmed.trim() === invoiceNo || confirmed.trim() === "") {
+    localStorage.setItem(counterKey, String(counter));
+  }
+
+  showToast("Generuji PDF…");
+  const html = buildFakturaHtml(d, finalNo);
+
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none";
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+
+  await new Promise(r => setTimeout(r, 600));
+
+  const canvas = await html2canvas(iframe.contentDocument.body, {
+    scale: 2, useCORS: true,
+    width: 794, height: 1123,
+    windowWidth: 794, windowHeight: 1123
+  });
+  document.body.removeChild(iframe);
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+  pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+  pdf.save(`S.Jelenak_Faktura_${finalNo}.pdf`);
+  showToast(`Faktura ${finalNo} uložena jako PDF`);
 }
 
 function loadIcs(input) {
