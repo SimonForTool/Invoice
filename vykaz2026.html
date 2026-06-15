@@ -1299,7 +1299,7 @@ async function generateFaktura() {
   // Číslo faktury: 26 + MM + 5místné pořadové číslo; counter starts at 5 (last used = 260100005)
   const counterKey = "faktura_counter_2026";
   let counter = parseInt(localStorage.getItem(counterKey) || "5") + 1;
-  const invoiceNo = `26${mm}${String(counter).padStart(5,"0")}`;
+  const invoiceNo = `2601${String(counter).padStart(5,"0")}`;
 
   // Potvrdit číslo faktury
   const confirmed = prompt(`Číslo faktury: ${invoiceNo}\nZměňte pokud potřebujete jiné číslo:`, invoiceNo);
@@ -1316,6 +1316,7 @@ async function generateFaktura() {
   const ws = wb.addWorksheet("List1");
 
   ws.pageSetup = { paperSize: 9, orientation: "portrait",
+    fitToPage: true, fitToWidth: 1, fitToHeight: 1,
     margins: { left: 0.394, right: 0.315, top: 0.748, bottom: 0.748, header: 0.315, footer: 0.315 } };
 
   // Hide gridlines
@@ -1353,7 +1354,7 @@ async function generateFaktura() {
 
   // ISDOC logo
   const imgId = wb.addImage({ base64: ISDOC_B64, extension: "png" });
-  ws.addImage(imgId, { tl: { col: 1, row: 0 }, ext: { width: 88, height: 34 } });
+  ws.addImage(imgId, { tl: { col: 1, row: 0 }, ext: { width: 55, height: 21 } });
 
   const NAVY = { argb: "FF000080" };
   const numFmt = '_-* #,##0.00_-;\\-* #,##0.00_-;_-* "-"??_-;_-@_-';
