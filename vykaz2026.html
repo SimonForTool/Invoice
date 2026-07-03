@@ -244,6 +244,9 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
   <button class="btn no-print"
           style="background:#6d4c41;color:#fff"
           onclick="setupFakturaDir()" title="Vybrat složku pro automatický export faktur">📁 Složka Fakturace</button>
+  <button class="btn no-print"
+          style="background:#7b1fa2;color:#fff"
+          onclick="generateFakturaZaMinulyMesic()" title="Vygenerovat fakturu za předchozí měsíc">🧾 Faktura min. měsíc</button>
   <button class="btn no-print" id="btnIcs"
           style="background:#005a9e;color:#fff"
           onclick="document.getElementById('icsInput').click()" title="Záloha: export .ics z Outlooku">📎 .ics</button>
@@ -1767,7 +1770,9 @@ async function _generateFakturaPdfBuffer(d, finalNo) {
 
 async function autoFakturaIfFirstDay() {
   const today = new Date();
-  if (today.getDate() !== 1) return;
+  const day = today.getDate();
+  // Trigger within first 5 days of month (catches late page opens)
+  if (day < 1 || day > 5) return;
 
   // Previous month
   const prevM    = today.getMonth() === 0 ? 12 : today.getMonth(); // 1-12
@@ -1777,56 +1782,87 @@ async function autoFakturaIfFirstDay() {
   const autoKey = `faktura_auto_${prevYear}_${prevM}`;
   if (localStorage.getItem(autoKey)) return;
 
-  // Get directory handle
-  let dirHandle = null;
-  try { dirHandle = await loadDirHandle(); } catch(e) {}
-  if (!dirHandle) {
-    showToast("Nastavte složku Fakturace (tlačítko 📁) pro automatický export.", true);
-    return;
-  }
+  // Show a toast banner with action button (avoids needing silent requestPermission)
+  const mmStr = String(prevM).padStart(2,"0");
+  showToastAction(
+    `Faktura za ${mmStr}/2026 ještě nebyla vygenerována.`,
+    "Generovat nyní",
+    () => generateFakturaZaMesic(prevM, prevYear)
+  );
+}
 
-  // Verify/request permission (requires user interaction in some browsers;
-  // if blocked, falls back to download)
-  let havePerm = false;
-  try {
-    const perm = await dirHandle.requestPermission({ mode: "readwrite" });
-    havePerm = perm === "granted";
-  } catch(e) {}
+function showToastAction(msg, btnLabel, onClick) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.innerHTML = `${msg} <button onclick="(${onClick.toString()})()" style="margin-left:8px;padding:2px 8px;cursor:pointer;border:none;border-radius:4px;background:#fff;color:#333;font-weight:bold">${btnLabel}</button>`;
+  t.className = "show";
+  // Don't auto-hide — user must click
+}
 
-  // Build invoice for previous month
+async function generateFakturaZaMesic(prevM, prevYear) {
+  const mmStr = String(prevM).padStart(2,"0");
+  const autoKey = `faktura_auto_${prevYear}_${prevM}`;
+
   const counterKey = "faktura_counter_2026";
   const counter    = parseInt(localStorage.getItem(counterKey) || "5") + 1;
-  const finalNo    = `2601${String(counter).padStart(5,"0")}`;
-  const d          = getFakturaData(prevM);
-  if (!d) { showToast("Nejsou data pro automatickou fakturu.", true); return; }
+  const invoiceNo  = `2601${String(counter).padStart(5,"0")}`;
+  const confirmed  = prompt(`Číslo faktury za ${mmStr}/${prevYear}: ${invoiceNo}\nZměňte pokud potřebujete jiné číslo:`, invoiceNo);
+  if (confirmed === null) return;
+  const finalNo = confirmed.trim() || invoiceNo;
 
-  showToast(`Generuji automatickou fakturu ${finalNo} za ${String(prevM).padStart(2,"0")}/2026…`);
+  const d = getFakturaData(prevM);
+  if (!d) { showToast("Nejsou data výkazu pro tento měsíc.", true); return; }
+
+  showToast(`Generuji fakturu ${finalNo} za ${mmStr}/${prevYear}…`);
 
   // Generate XLSX
-  const xlsxBuf = await _generateFakturaXlsxBuffer(d, finalNo);
+  const xlsxBuf  = await _generateFakturaXlsxBuffer(d, finalNo);
   const xlsxName = `S.Jelenak_Faktura_${finalNo}.xlsx`;
 
   // Generate PDF
-  const pdfBuf  = await _generateFakturaPdfBuffer(d, finalNo);
+  const pdfBuf   = await _generateFakturaPdfBuffer(d, finalNo);
   const pdfName  = `S.Jelenak_Faktura_${finalNo}.pdf`;
 
-  if (havePerm) {
-    await writeToFakturaDir(dirHandle, xlsxName, xlsxBuf);
-    await writeToFakturaDir(dirHandle, pdfName,  pdfBuf);
-    showToast(`Faktura ${finalNo} uložena do složky ${dirHandle.name}`);
-  } else {
-    // Fallback: browser downloads
+  // Try to save to Fakturace directory
+  let saved = false;
+  let dirHandle = null;
+  try { dirHandle = await loadDirHandle(); } catch(e) {}
+  if (dirHandle) {
+    try {
+      const perm = await dirHandle.requestPermission({ mode: "readwrite" });
+      if (perm === "granted") {
+        await writeToFakturaDir(dirHandle, xlsxName, xlsxBuf);
+        await writeToFakturaDir(dirHandle, pdfName,  pdfBuf);
+        showToast(`Faktura ${finalNo} uložena do složky ${dirHandle.name}`);
+        saved = true;
+      }
+    } catch(e) {}
+  }
+  if (!saved) {
+    // Fallback: download
     [{ name: xlsxName, buf: xlsxBuf, type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
      { name: pdfName,  buf: pdfBuf,  type: "application/pdf" }].forEach(f => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([f.buf], { type: f.type }));
       a.download = f.name; a.click();
     });
-    showToast(`Faktura ${finalNo} stažena (složka nedostupná).`);
+    showToast(`Faktura ${finalNo} stažena do složky Stažené soubory.`);
   }
 
-  localStorage.setItem(counterKey, String(counter));
+  if (confirmed.trim() === invoiceNo || confirmed.trim() === "") {
+    localStorage.setItem(counterKey, String(counter));
+  }
   localStorage.setItem(autoKey, "1");
+  // Hide toast banner
+  const t = document.getElementById("toast");
+  if (t) { t.className = ""; t.innerHTML = ""; }
+}
+
+function generateFakturaZaMinulyMesic() {
+  const today = new Date();
+  const prevM    = today.getMonth() === 0 ? 12 : today.getMonth(); // 1-12
+  const prevYear = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+  generateFakturaZaMesic(prevM, prevYear);
 }
 
 function loadIcs(input) {
