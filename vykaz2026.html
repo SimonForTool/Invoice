@@ -237,11 +237,7 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
           onclick="loadFromOutlook()">📅 Načíst z Outlooku</button>
   <button class="btn no-print" id="btnGoogle"
           style="background:#4285f4;color:#fff"
-          onclick="loadFromGoogle()">📅 Načíst z Google</button>
-  <button class="btn no-print"
-          style="background:#888;color:#fff;font-size:11px;padding:4px 8px"
-          title="Změnit URL Google Kalendáře"
-          onclick="loadFromGoogle(false, true)">⚙️ URL</button>
+          onclick="loadFromGoogle(false, true)">📅 Načíst z Google</button>
   <button class="btn no-print"
           style="background:#e65c00;color:#fff"
           onclick="generateFaktura()">🧾 Faktura XLSX</button>
@@ -1101,7 +1097,6 @@ async function showGoogleUrlDialog(currentUrl) {
             <span style="font-size:11px;color:#888">(začíná https://calendar.google.com/calendar/ical/…/private-…/basic.ics)</span></li>
         </ol>
         <input id="gIcsUrlInput" type="text" placeholder="https://calendar.google.com/calendar/ical/.../private-.../basic.ics"
-          value="${currentUrl || ''}"
           style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:6px">
         <p style="margin:0 0 14px;font-size:11px;color:#888">URL se uloží — příště se načte automaticky (i každý poslední den měsíce) bez tohoto dialogu.</p>
         <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -1114,6 +1109,7 @@ async function showGoogleUrlDialog(currentUrl) {
     document.body.appendChild(dlg);
     window._gResolve = val => { dlg.remove(); resolve(val); };
     const inp = document.getElementById("gIcsUrlInput");
+    if (currentUrl) inp.value = currentUrl;
     inp.addEventListener("keydown", e => { if (e.key === "Enter") window._gResolve(inp.value.trim()); });
     inp.focus();
     inp.select();
