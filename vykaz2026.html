@@ -1062,13 +1062,17 @@ async function loadFromOutlook() {
 
 async function fetchGoogleCalendar(url) {
   const enc = encodeURIComponent(url);
-  const attempts = [
-    () => fetch(url),
-    () => fetch(`https://corsproxy.io/?${enc}`),
-    () => fetch(`https://api.allorigins.win/raw?url=${enc}`),
-    () => fetch(`https://thingproxy.freeboard.io/fetch/${enc}`),
-    () => fetch(`https://cors.eu.org/${url}`),
-  ];
+  const isAppsScript = url.includes("script.google.com");
+  // Apps Script URL má vlastní CORS hlavičky — proxy ji jen komplikují
+  const attempts = isAppsScript
+    ? [() => fetch(url, {redirect: "follow"})]
+    : [
+        () => fetch(url),
+        () => fetch(`https://corsproxy.io/?${enc}`),
+        () => fetch(`https://api.allorigins.win/raw?url=${enc}`),
+        () => fetch(`https://thingproxy.freeboard.io/fetch/${enc}`),
+        () => fetch(`https://cors.eu.org/${url}`),
+      ];
   for (const attempt of attempts) {
     try {
       const r = await attempt();
@@ -1078,7 +1082,10 @@ async function fetchGoogleCalendar(url) {
       }
     } catch(e) { /* zkusíme další */ }
   }
-  throw new Error("Nepodařilo se načíst kalendář přes žádný proxy. Zkuste ICS import z Outlooku.");
+  const hint = isAppsScript
+    ? "Apps Script URL nefunguje. Zkontrolujte nasazení — přístup musí být 'Kdokoli' (ne 'Kdokoli pomocí účtu Google')."
+    : "Nepodařilo se načíst kalendář. Nastavte Google Apps Script proxy dle návodu.";
+  throw new Error(hint);
 }
 
 async function showGoogleUrlDialog(currentUrl) {
