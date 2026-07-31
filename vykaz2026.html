@@ -239,6 +239,10 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
           style="background:#4285f4;color:#fff"
           onclick="loadFromGoogle()">📅 Načíst z Google</button>
   <button class="btn no-print"
+          style="background:#888;color:#fff;font-size:11px;padding:4px 8px"
+          title="Změnit URL Google Kalendáře"
+          onclick="localStorage.removeItem('google_ics_url');loadFromGoogle()">⚙️ URL</button>
+  <button class="btn no-print"
           style="background:#e65c00;color:#fff"
           onclick="generateFaktura()">🧾 Faktura XLSX</button>
   <button class="btn no-print"
@@ -1090,14 +1094,20 @@ async function loadFromGoogle(silent = false) {
       dlg.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
         display:flex;align-items:center;justify-content:center;z-index:9999;`;
       dlg.innerHTML = `
-        <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:640px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
-          <h3 style="margin:0 0 10px;font-size:16px">📅 Načíst z Google Calendar</h3>
-          <p style="margin:0 0 6px;font-size:13px;color:#444;line-height:1.6">
-            Vložte URL vašeho <b>Google Apps Script proxy</b> (script.google.com/macros/s/.../exec):<br>
-            <span style="font-size:11px;color:#888">URL se uloží — příště se načte automaticky bez tohoto dialogu</span>
+        <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:660px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+          <h3 style="margin:0 0 12px;font-size:16px">📅 Načíst z Google Calendar</h3>
+          <p style="margin:0 0 8px;font-size:13px;color:#444;line-height:1.6">
+            Vložte <b>privátní ICS adresu</b> vašeho Google Kalendáře:
           </p>
-          <input id="gIcsUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec"
-            style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:14px">
+          <ol style="margin:0 0 12px;padding-left:20px;font-size:12px;color:#555;line-height:1.8">
+            <li>Otevřete <b>Google Kalendář</b> na počítači</li>
+            <li>Klikněte na <b>⋮</b> vedle názvu vašeho kalendáře → <b>Nastavení a sdílení</b></li>
+            <li>Sjeďte dolů na sekci <b>„Integrovat kalendář"</b></li>
+            <li>Zkopírujte <b>„Tajná adresa ve formátu iCal"</b> (začíná <code>https://calendar.google.com/calendar/ical/…/private-…/basic.ics</code>)</li>
+          </ol>
+          <input id="gIcsUrlInput" type="text" placeholder="https://calendar.google.com/calendar/ical/.../private-.../basic.ics"
+            style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:6px">
+          <p style="margin:0 0 14px;font-size:11px;color:#888">URL se uloží — příště se načte automaticky (i každý poslední den měsíce) bez tohoto dialogu.</p>
           <div style="display:flex;gap:10px;justify-content:flex-end">
             <button onclick="document.getElementById('googleUrlDialog').remove();window._gResolve(null)"
               style="padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:5px;cursor:pointer">Zrušit</button>
