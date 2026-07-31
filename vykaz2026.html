@@ -237,7 +237,11 @@ tfoot td { font-weight:700; font-size:13px; padding:6px 8px;
           onclick="loadFromOutlook()">📅 Načíst z Outlooku</button>
   <button class="btn no-print" id="btnGoogle"
           style="background:#4285f4;color:#fff"
-          onclick="loadFromGoogle(false, true)">📅 Načíst z Google</button>
+          onclick="loadFromGoogle()">📅 Načíst z Google</button>
+  <button class="btn no-print"
+          style="background:#888;color:#fff;font-size:11px;padding:4px 8px"
+          title="Změnit URL Google Kalendáře"
+          onclick="loadFromGoogle(false, true)">⚙️ URL</button>
   <button class="btn no-print"
           style="background:#e65c00;color:#fff"
           onclick="generateFaktura()">🧾 Faktura XLSX</button>
@@ -1057,10 +1061,13 @@ async function loadFromOutlook() {
 // ══ GOOGLE CALENDAR — načtení přes Apps Script proxy ═════════════════════════
 
 async function fetchGoogleCalendar(url) {
+  const enc = encodeURIComponent(url);
   const attempts = [
     () => fetch(url),
-    () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`),
-    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`),
+    () => fetch(`https://corsproxy.io/?${enc}`),
+    () => fetch(`https://api.allorigins.win/raw?url=${enc}`),
+    () => fetch(`https://thingproxy.freeboard.io/fetch/${enc}`),
+    () => fetch(`https://cors.eu.org/${url}`),
   ];
   for (const attempt of attempts) {
     try {
@@ -1071,7 +1078,7 @@ async function fetchGoogleCalendar(url) {
       }
     } catch(e) { /* zkusíme další */ }
   }
-  throw new Error("Nepodařilo se načíst kalendář. Zkontrolujte URL.");
+  throw new Error("Nepodařilo se načíst kalendář přes žádný proxy. Zkuste ICS import z Outlooku.");
 }
 
 async function showGoogleUrlDialog(currentUrl) {
@@ -1135,7 +1142,6 @@ async function loadFromGoogle(silent = false, forceDialog = false) {
     if (!silent) showToast("Google Calendar načten.");
   } catch(e) {
     console.error(e);
-    if (e.message.includes("Nepodařilo")) localStorage.removeItem(STORAGE_KEY);
     if (!silent) showToast("Chyba Google Calendar: " + e.message, true);
   } finally {
     if (btn) { btn.textContent = "📅 Načíst z Google"; btn.disabled = false; }
