@@ -1090,21 +1090,32 @@ async function showGoogleUrlDialog(currentUrl) {
     dlg.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);
       display:flex;align-items:center;justify-content:center;z-index:9999;`;
     dlg.innerHTML = `
-      <div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:660px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
-        <h3 style="margin:0 0 12px;font-size:16px">📅 Načíst z Google Calendar</h3>
-        <p style="margin:0 0 8px;font-size:13px;color:#444;line-height:1.6">
-          Vložte <b>privátní ICS adresu</b> vašeho Google Kalendáře:
+      <div style="background:#fff;border-radius:8px;padding:24px 28px;max-width:700px;width:96%;box-shadow:0 8px 32px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto">
+        <h3 style="margin:0 0 10px;font-size:15px">📅 Připojit Google Calendar</h3>
+        <p style="margin:0 0 8px;font-size:13px;color:#c00;font-weight:bold">
+          ⚠️ Google blokuje přímé načítání ICS z prohlížeče (CORS). Je nutné jednorázově nastavit Google Apps Script proxy.
         </p>
-        <ol style="margin:0 0 12px;padding-left:20px;font-size:12px;color:#555;line-height:1.8">
-          <li>Otevřete <b>Google Kalendář</b> na počítači</li>
-          <li>Klikněte na <b>⋮</b> vedle názvu vašeho kalendáře → <b>Nastavení a sdílení</b></li>
-          <li>Sjeďte dolů na sekci <b>„Integrovat kalendář"</b></li>
-          <li>Zkopírujte <b>„Tajná adresa ve formátu iCal"</b><br>
-            <span style="font-size:11px;color:#888">(začíná https://calendar.google.com/calendar/ical/…/private-…/basic.ics)</span></li>
+        <p style="margin:0 0 6px;font-size:13px;color:#333;font-weight:bold">Postup (5 minut, jednou provždy):</p>
+        <ol style="margin:0 0 10px;padding-left:18px;font-size:12px;color:#444;line-height:2">
+          <li>Otevřete <a href="https://script.google.com" target="_blank" style="color:#4285f4">script.google.com</a> → <b>Nový projekt</b></li>
+          <li>Smažte veškerý obsah a vložte tento kód:</li>
         </ol>
-        <input id="gIcsUrlInput" type="text" placeholder="https://calendar.google.com/calendar/ical/.../private-.../basic.ics"
-          style="width:100%;padding:8px 10px;border:1.5px solid #aaa;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:6px">
-        <p style="margin:0 0 14px;font-size:11px;color:#888">URL se uloží — příště se načte automaticky (i každý poslední den měsíce) bez tohoto dialogu.</p>
+        <pre style="background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:10px;font-size:11px;margin:0 0 8px;overflow-x:auto;white-space:pre-wrap;word-break:break-all">function doGet() {
+  var url = "VLOŽTE_SEM_TAJNOU_ICS_ADRESU";
+  var r = UrlFetchApp.fetch(url);
+  return ContentService.createTextOutput(r.getContentText())
+    .setMimeType(ContentService.MimeType.TEXT);
+}</pre>
+        <p style="margin:0 0 6px;font-size:12px;color:#555">Tajnou ICS adresu najdete v Google Kalendáři → <b>⋮</b> → Nastavení a sdílení → sekce „Integrovat kalendář" → <b>Tajná adresa ve formátu iCal</b>.</p>
+        <ol start="3" style="margin:0 0 10px;padding-left:18px;font-size:12px;color:#444;line-height:2">
+          <li>Klikněte <b>Nasadit → Nové nasazení</b> → typ: <b>Webová aplikace</b></li>
+          <li>„Spustit jako": <b>Já</b> &nbsp;|&nbsp; „Kdo má přístup": <b>Kdokoli</b> → <b>Nasadit</b></li>
+          <li>Zkopírujte <b>URL webové aplikace</b> (script.google.com/macros/s/.../exec)</li>
+          <li>Vložte ji níže:</li>
+        </ol>
+        <input id="gIcsUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec"
+          style="width:100%;padding:8px 10px;border:1.5px solid #4285f4;border-radius:5px;font-size:12px;box-sizing:border-box;margin-bottom:6px">
+        <p style="margin:0 0 12px;font-size:11px;color:#888">URL se uloží — příště se načte automaticky bez tohoto dialogu, včetně každého posledního dne v měsíci.</p>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button onclick="document.getElementById('googleUrlDialog').remove();window._gResolve(null)"
             style="padding:8px 18px;border:1px solid #ccc;background:#fff;border-radius:5px;cursor:pointer">Zrušit</button>
