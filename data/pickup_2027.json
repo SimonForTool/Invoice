@@ -1,0 +1,367 @@
+{
+  "year": 2027,
+  "hotel": "Parkhotel TYCHO",
+  "report_month": 2,
+  "months": {
+    "1": {
+      "days_in_month": 31,
+      "sellable_rooms": 22,
+      "budget_rn": 140.49,
+      "budget_rev": 166241.37,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "2": {
+      "days_in_month": 28,
+      "sellable_rooms": 22,
+      "budget_rn": 154.74,
+      "budget_rev": 190725.35,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "3": {
+      "days_in_month": 31,
+      "sellable_rooms": 22,
+      "budget_rn": 147.52,
+      "budget_rev": 210901.53,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "4": {
+      "days_in_month": 30,
+      "sellable_rooms": 22,
+      "budget_rn": 176.42,
+      "budget_rev": 278302.92,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "5": {
+      "days_in_month": 31,
+      "sellable_rooms": 22,
+      "budget_rn": 205.08,
+      "budget_rev": 353832.34,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "6": {
+      "days_in_month": 30,
+      "sellable_rooms": 22,
+      "budget_rn": 217.93,
+      "budget_rev": 386750.84,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "7": {
+      "days_in_month": 31,
+      "sellable_rooms": 22,
+      "budget_rn": 277.71,
+      "budget_rev": 383351.44,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "8": {
+      "days_in_month": 31,
+      "sellable_rooms": 22,
+      "budget_rn": 297.97,
+      "budget_rev": 411311.99,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "9": {
+      "days_in_month": 30,
+      "sellable_rooms": 22,
+      "budget_rn": 229.09,
+      "budget_rev": 395255.82,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "10": {
+      "days_in_month": 31,
+      "sellable_rooms": 22,
+      "budget_rn": 215.78,
+      "budget_rev": 351038.71,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "11": {
+      "days_in_month": 30,
+      "sellable_rooms": 22,
+      "budget_rn": 164.14,
+      "budget_rev": 234670.53,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    },
+    "12": {
+      "days_in_month": 31,
+      "sellable_rooms": 22,
+      "budget_rn": 124.4,
+      "budget_rev": 159456.79,
+      "rn": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "revenue": {
+        "definite": {
+          "yesterday": 0,
+          "today": 0
+        },
+        "tentative": {
+          "yesterday": 0,
+          "today": 0
+        }
+      },
+      "last_year": {
+        "rn": 0,
+        "revenue": 0
+      }
+    }
+  }
+}

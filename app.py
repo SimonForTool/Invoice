@@ -8,6 +8,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_file, abort
 from generate_pdf import generate
+import pickup_data
 
 app = Flask(__name__)
 
@@ -61,6 +62,29 @@ def api_pdf(year, month):
         abort(404, "PDF ještě nebylo vygenerováno.")
     return send_file(path, mimetype="application/pdf",
                      download_name=path.name, as_attachment=False)
+
+# ── Pickup Report (Parkhotel TYCHO) ──────────────────────────────────────────
+
+@app.route("/pickup")
+def pickup_index():
+    return render_template("pickup.html", mesice=pickup_data.MESICE)
+
+@app.get("/api/pickup/<int:year>")
+def api_pickup_get(year):
+    return jsonify(pickup_data.load_year(year))
+
+@app.post("/api/pickup/<int:year>")
+def api_pickup_save(year):
+    data = request.get_json(force=True)
+    pickup_data.save_year(year, data)
+    return jsonify({"status": "ok"})
+
+@app.get("/api/pickup/<int:year>/export")
+def api_pickup_export(year):
+    data = pickup_data.load_year(year)
+    out = Path("output") / f"pickup_report_{year}.xlsx"
+    pickup_data.export_xlsx(year, data, out)
+    return send_file(out, as_attachment=True, download_name=out.name)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
