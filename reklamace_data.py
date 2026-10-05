@@ -32,6 +32,7 @@ def _empty_faze(key: str) -> dict:
         "datum": None,
         "poznamka": "",
         "odpovedna_osoba": "",
+        "cislo_ticketu": "",
         "prilohy": [],
     }
     if key == "ostatni":
@@ -128,7 +129,7 @@ def update_faze(cislo: str, faze_key: str, patch: dict) -> dict | None:
     if not item:
         return None
     faze = item["faze"][faze_key]
-    for key in ("stav", "datum", "poznamka", "odpovedna_osoba", "dodavatel"):
+    for key in ("stav", "datum", "poznamka", "odpovedna_osoba", "dodavatel", "cislo_ticketu"):
         if key in patch:
             faze[key] = patch[key]
     save_all(data)

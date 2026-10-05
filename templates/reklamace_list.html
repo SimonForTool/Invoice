@@ -168,7 +168,7 @@ function render(items) {
   }
   let html = `<table class="grid"><thead><tr>
     <th>Číslo</th><th>Servisní partner</th><th>Kontaktní osoba</th>
-    <th>Datum přijetí</th><th>Fáze</th><th>Stav</th>
+    <th>Datum přijetí</th><th>WETSy – číslo ticketu</th><th>Fáze</th><th>Stav</th>
   </tr></thead><tbody>`;
   for (const it of items) {
     const dots = ["wetsy","getac","actia","ostatni"].map(k => {
@@ -181,6 +181,7 @@ function render(items) {
       <td>${escapeHtml(it.servisni_partner)}</td>
       <td>${escapeHtml(it.kontaktni_osoba || "—")}</td>
       <td>${fmtDate(it.datum_prijeti)}</td>
+      <td>${escapeHtml(it.faze.wetsy.cislo_ticketu || "—")}</td>
       <td class="center"><span class="dots">${dots}</span></td>
       <td><span class="badge ${STAV_CLASS[it.celkovy_stav]}">${STAV_LABELS[it.celkovy_stav]}</span></td>
     </tr>`;
